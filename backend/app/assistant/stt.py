@@ -15,7 +15,7 @@ import threading
 import av
 import numpy as np
 
-from app.config import WHISPER_COMPUTE, WHISPER_DEVICE, WHISPER_MODEL
+from app.config import MAX_AUDIO_SECONDS, WHISPER_COMPUTE, WHISPER_DEVICE, WHISPER_MODEL
 
 log = logging.getLogger("stt")
 
@@ -61,18 +61,26 @@ def device() -> str | None:
 
 
 def decode_16k_mono(audio: bytes) -> np.ndarray:
-    """Any container/codec PyAV understands -> float32 PCM, 16 kHz mono."""
+    """Any container/codec PyAV understands -> float32 PCM, 16 kHz mono.
+
+    Stops after MAX_AUDIO_SECONDS so a small, highly compressed file can't expand
+    into hours of PCM in memory.
+    """
     resampler = av.AudioResampler(format="s16", layout="mono", rate=16000)
-    chunks = []
+    chunks, total, limit = [], 0, MAX_AUDIO_SECONDS * 16000
     with av.open(io.BytesIO(audio)) as container:
         for frame in container.decode(audio=0):
             for out in resampler.resample(frame):
-                chunks.append(out.to_ndarray().reshape(-1))
+                pcm = out.to_ndarray().reshape(-1)
+                chunks.append(pcm)
+                total += len(pcm)
+            if total >= limit:
+                break
         for out in resampler.resample(None):            # flush
             chunks.append(out.to_ndarray().reshape(-1))
     if not chunks:
         return np.zeros(0, dtype=np.float32)
-    return np.concatenate(chunks).astype(np.float32) / 32768.0
+    return np.concatenate(chunks)[:limit].astype(np.float32) / 32768.0
 
 
 def transcribe(audio: bytes) -> dict:

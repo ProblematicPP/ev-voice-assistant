@@ -33,6 +33,11 @@ HOME_PEAK_TARIFF_INR = 9.5     # per kWh, 18:00-22:00
 PETROL_INR_PER_L = 102.9
 PETROL_CAR_KMPL = 15.0
 
+# ---- Security: only the local UI may drive the assistant ---------------------
+ALLOWED_ORIGINS = {"http://localhost:5173", "http://127.0.0.1:5173"}
+MAX_AUDIO_BYTES = 5 * 1024 * 1024      # ~5 min of opus; push-to-talk clips are tiny
+MAX_AUDIO_SECONDS = 30
+
 # ---- Local models -----------------------------------------------------------
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5:7b")

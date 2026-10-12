@@ -8,6 +8,7 @@ from pydantic import BaseModel
 
 from app.api.hub import hub
 from app.assistant import stt, tts
+from app.config import ALLOWED_ORIGINS, MAX_AUDIO_BYTES
 from app.context import get_ctx
 
 router = APIRouter(prefix="/api", tags=["assistant"])
@@ -33,6 +34,12 @@ async def run_turn(text: str, via: str = "text") -> dict:
 
 @router.websocket("/ws")
 async def ws_endpoint(ws: WebSocket):
+    # Browsers don't apply CORS to WebSockets, so check Origin ourselves; otherwise any
+    # website open in the browser could drive the assistant via ws://localhost.
+    origin = ws.headers.get("origin")
+    if origin and origin not in ALLOWED_ORIGINS:
+        await ws.close(code=1008)
+        return
     await hub.connect(ws)
     try:
         await hub.send(ws, {"type": "state", "state": get_ctx().snapshot()})
@@ -58,7 +65,9 @@ async def chat(body: ChatIn):
 
 @router.post("/stt")
 async def speech_to_text(audio: UploadFile = File(...)):
-    data = await audio.read()
+    data = await audio.read(MAX_AUDIO_BYTES + 1)
+    if len(data) > MAX_AUDIO_BYTES:
+        raise HTTPException(413, "Recording too large")
     if len(data) < 1000:
         raise HTTPException(400, "Recording too short")
     try:

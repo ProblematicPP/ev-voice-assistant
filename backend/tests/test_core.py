@@ -110,3 +110,29 @@ def test_place_resolution(ctx):
 def test_tts_speakable(text, spoken):
     from app.assistant.tts import speakable
     assert speakable(text) == spoken
+
+
+def test_cross_site_requests_refused():
+    from fastapi.testclient import TestClient
+    from starlette.websockets import WebSocketDisconnect
+    from app.main import app
+    c = TestClient(app)
+    assert c.post("/api/sim/reset", headers={"Origin": "https://evil.example"}).status_code == 403
+    assert c.post("/api/sim/reset", headers={"Origin": "http://localhost:5173"}).status_code == 200
+    with pytest.raises(WebSocketDisconnect):
+        with c.websocket_connect("/api/ws", headers={"Origin": "https://evil.example"}) as ws:
+            ws.receive_text()
+    with c.websocket_connect("/api/ws", headers={"Origin": "http://localhost:5173"}) as ws:
+        assert '"state"' in ws.receive_text()
+
+
+def test_audio_decode_is_capped():
+    import io, wave
+    import numpy as np
+    from app.assistant.stt import decode_16k_mono
+    from app.config import MAX_AUDIO_SECONDS
+    buf = io.BytesIO()
+    with wave.open(buf, "wb") as w:              # 60 s of silence, twice the cap
+        w.setnchannels(1); w.setsampwidth(2); w.setframerate(16000)
+        w.writeframes(np.zeros(16000 * 60, dtype=np.int16).tobytes())
+    assert len(decode_16k_mono(buf.getvalue())) == MAX_AUDIO_SECONDS * 16000

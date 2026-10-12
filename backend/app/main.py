@@ -3,14 +3,15 @@ import asyncio
 import contextlib
 import logging
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.api import battery, companion, routes, sim, ws_assistant
 from app.api.hub import hub
 from app.assistant import stt, tts
 from app.assistant.pipeline import AssistantPipeline
-from app.config import OLLAMA_MODEL, PIPER_VOICE, WHISPER_MODEL
+from app.config import ALLOWED_ORIGINS, OLLAMA_MODEL, PIPER_VOICE, WHISPER_MODEL
 from app.context import get_ctx
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
@@ -44,8 +45,19 @@ async def lifespan(_app):
 
 
 app = FastAPI(title="EV Voice Assistant - Battery-Intelligence Core", lifespan=lifespan)
-app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+app.add_middleware(CORSMiddleware, allow_origins=sorted(ALLOWED_ORIGINS),
                    allow_methods=["*"], allow_headers=["*"])
+
+
+@app.middleware("http")
+async def reject_cross_site_writes(request: Request, call_next):
+    """CSRF guard: CORS doesn't stop 'simple' cross-site POSTs (e.g. a bodiless /api/sim/reset)
+    from executing, so any state-changing request carrying a foreign Origin is refused.
+    Requests without an Origin header (curl, tests) are allowed - they can't come from a web page."""
+    origin = request.headers.get("origin")
+    if request.method not in ("GET", "HEAD", "OPTIONS") and origin and origin not in ALLOWED_ORIGINS:
+        return JSONResponse({"detail": "Cross-origin request refused"}, status_code=403)
+    return await call_next(request)
 for r in (battery, companion, routes, sim, ws_assistant):
     app.include_router(r.router)
 
