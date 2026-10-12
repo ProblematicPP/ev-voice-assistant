@@ -1,0 +1,24 @@
+﻿# Web
+fastapi==0.115.6
+uvicorn[standard]==0.32.1
+python-multipart==0.0.20
+httpx==0.28.1
+
+# Data / ML
+numpy==2.1.3
+pandas==2.2.3
+# torch is installed separately from the CPU wheel index (see README):
+#   uv pip install torch --index-url https://download.pytorch.org/whl/cpu
+
+# Speech-to-text (local Whisper via CTranslate2)
+faster-whisper==1.2.1
+requests==2.32.3          # needed by the Whisper model downloader
+# GPU speech-to-text: CUDA math libraries for CTranslate2 (harmless without an NVIDIA GPU)
+nvidia-cublas-cu12==12.9.2.10
+nvidia-cudnn-cu12==9.27.0.42
+
+# Text-to-speech (local neural voices)
+piper-tts==1.8.0
+
+# Tests
+pytest==8.3.4

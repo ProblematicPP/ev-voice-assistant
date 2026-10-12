@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Volt EV Assistant</title>
+<meta name="description" content="A voice assistant for electric vehicles that checks battery health and range before it acts. Final-year AIML project prototype." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Semi+Condensed:wght@600;700&display=swap" rel="stylesheet" />
+<style>
+:root {
+  color-scheme: light;
+  --bg: #edf1f4; --panel: #ffffff; --panel-2: #f5f7f9; --line: #d8dee4;
+  --ink: #14212b; --ink-2: #51606b; --ink-3: #7b8892;
+  --accent: #0d63a5; --accent-soft: #e2eef8; --charge: #b86a00; --charge-soft: #fbefdc;
+  --ok: #1f7a4d; --bad: #b3261e;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #0f171d; --panel: #172129; --panel-2: #1d2a33; --line: #2b3a45;
+    --ink: #e8eef2; --ink-2: #a9b6bf; --ink-3: #7f8d97;
+    --accent: #5aa7e6; --accent-soft: #17324a; --charge: #e09a3a; --charge-soft: #3a2a12;
+    --ok: #4fbf86; --bad: #ef7a72;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0f171d; --panel: #172129; --panel-2: #1d2a33; --line: #2b3a45;
+  --ink: #e8eef2; --ink-2: #a9b6bf; --ink-3: #7f8d97;
+  --accent: #5aa7e6; --accent-soft: #17324a; --charge: #e09a3a; --charge-soft: #3a2a12;
+  --ok: #4fbf86; --bad: #ef7a72;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 17px/1.55 "Barlow", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+a { color: var(--accent); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.wrap { max-width: 1040px; margin: 0 auto; padding: 0 16px; }
+.num { font-family: "Barlow Semi Condensed", "Barlow", sans-serif; font-variant-numeric: tabular-nums; }
+
+header.hero { padding: 56px 0 28px; }
+.hero h1 { font-size: clamp(38px, 6vw, 64px); line-height: 1.02; margin: 0 0 16px; letter-spacing: -0.8px; max-width: 16ch; }
+.hero p.lede { font-size: 20px; color: var(--ink-2); max-width: 60ch; margin: 0 0 22px; }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.btn { display: inline-block; padding: 10px 18px; border-radius: 10px; font-weight: 600; text-decoration: none; border: 1px solid var(--line); background: var(--panel); color: var(--ink); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+/* The exchange: the one memorable element - a real conversation turn with the guard visible */
+.exchange { margin: 36px 0 8px; background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 22px; display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+@media (max-width: 760px) { .exchange { grid-template-columns: 1fr; } }
+.bubble { padding: 11px 14px; border-radius: 12px; margin-bottom: 10px; max-width: 95%; }
+.bubble.user { background: var(--accent); color: #fff; margin-left: auto; border-bottom-right-radius: 4px; width: fit-content; }
+.bubble.bot { background: var(--panel-2); border: 1px solid var(--line); border-bottom-left-radius: 4px; }
+.bubble.nudge { background: var(--charge-soft); border-left: 4px solid var(--charge); }
+.trace { font-size: 14.5px; color: var(--ink-2); border-left: 2px solid var(--line); padding-left: 16px; }
+.trace ol { margin: 0; padding-left: 18px; }
+.trace li { margin-bottom: 8px; }
+.trace b { color: var(--ink); }
+.trace .guard { color: var(--charge); font-weight: 600; }
+
+section { padding: 40px 0 8px; }
+h2 { font-size: 30px; line-height: 1.15; margin: 0 0 12px; letter-spacing: -0.3px; }
+section > .wrap > p { max-width: 68ch; color: var(--ink-2); }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-top: 18px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; }
+.card h3 { margin: 0 0 6px; font-size: 18px; }
+.card p { margin: 0; color: var(--ink-2); font-size: 15.5px; }
+.card .ex { margin-top: 8px; font-size: 14.5px; color: var(--ink); font-style: italic; }
+.stub-tag { font-size: 12.5px; font-weight: 600; color: var(--charge); }
+
+figure { margin: 18px 0 0; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px; overflow-x: auto; }
+figure svg { display: block; min-width: 720px; width: 100%; height: auto; }
+figcaption { font-size: 14px; color: var(--ink-3); margin-top: 10px; }
+svg text { font-family: "Barlow", sans-serif; }
+
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-top: 18px; }
+.stat { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; }
+.stat strong { display: block; font-family: "Barlow Semi Condensed", sans-serif; font-size: 36px; line-height: 1.05; }
+.stat span { color: var(--ink-2); font-size: 15px; }
+
+table { width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 15px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { color: var(--ink-3); font-weight: 500; background: var(--panel-2); }
+tr:last-child td { border-bottom: 0; }
+.tablewrap { overflow-x: auto; }
+
+pre { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px; overflow-x: auto; font-size: 14px; line-height: 1.5; }
+code { font-family: ui-monospace, Consolas, monospace; }
+ul.limits { color: var(--ink-2); max-width: 68ch; }
+footer { padding: 40px 0 56px; color: var(--ink-3); font-size: 14.5px; }
+</style>
+</head>
+<body>
+<header class="hero">
+  <div class="wrap">
+    <h1>An EV voice assistant that checks the battery before it says yes</h1>
+    <p class="lede">
+      Most in-car assistants turn speech into commands. Volt routes every navigation, charging and climate request
+      through a battery-intelligence core first: trained models for battery health and personalized range, plus a
+      guard that blocks anything the car can't safely do.
+    </p>
+    <div class="actions">
+      <a class="btn primary" href="https://github.com/__REPO__">View the code on GitHub</a>
+      <a class="btn" href="#run">Run it locally</a>
+    </div>
+
+    <div class="exchange" aria-label="Example conversation">
+      <div>
+        <div class="bubble user">Will I make it to Mysore without stopping?</div>
+        <div class="bubble bot">No. Mysuru is 156 km away and at today's consumption you'd run out about 62 km short. One 21-minute stop at Bidadi Expressway Plaza fixes it. Want me to start that route?</div>
+        <div class="bubble user">Yes</div>
+        <div class="bubble bot">Routing to Mysuru with a charging stop at Bidadi (arrive 27%, charge to 72%). Total 2 h 53 min, arriving with 15%.</div>
+        <div class="bubble nudge"><b>Volt noticed:</b> at 40 °C with AC on, you'd reach Mysuru at 7%, below the safe reserve. Re-plan with a charging stop?</div>
+      </div>
+      <div class="trace">
+        <p style="margin-top:0"><b>What happened behind that first answer</b></p>
+        <ol>
+          <li>Speech transcribed locally by <b>Whisper</b>.</li>
+          <li>A local LLM (<b>Qwen 2.5 via Ollama</b>) picks the tool <code>check_range_to("Mysore")</code>. It never invents numbers.</li>
+          <li>The <b>range model</b> predicts Wh/km for every road segment under today's heat, AC, driving style and battery age.</li>
+          <li>The <span class="guard">battery guard</span> compares predicted arrival charge with a 10% reserve: fail.</li>
+          <li>The <b>planner</b> searches charger combinations and picks the fastest plan that keeps every leg above the floor.</li>
+          <li>The LLM phrases the reply using only those facts; <b>Piper</b> speaks it.</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</header>
+
+<section>
+  <div class="wrap">
+    <h2>How a request flows</h2>
+    <p>The language model chooses <em>what</em> to do. Deterministic code backed by the trained models decides
+      <em>whether</em> it can be done. If the LLM is offline, a rule-based parser takes its place, so the assistant
+      still works.</p>
+    <figure>
+      <svg viewBox="0 0 980 250" role="img" aria-label="Pipeline: voice to speech-to-text to LLM to router, which calls the battery guard before the battery core, route planner and companion logic, then response generation and text-to-speech">
+        <defs>
+          <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="var(--ink-3)" />
+          </marker>
+        </defs>
+        <g font-size="14" fill="var(--ink)">
+          <rect x="10" y="40" width="110" height="56" rx="10" fill="var(--panel-2)" stroke="var(--line)" />
+          <text x="65" y="64" text-anchor="middle" font-weight="600">Voice</text>
+          <text x="65" y="82" text-anchor="middle" font-size="12" fill="var(--ink-2)">browser mic</text>
+
+          <rect x="150" y="40" width="120" height="56" rx="10" fill="var(--panel-2)" stroke="var(--line)" />
+          <text x="210" y="64" text-anchor="middle" font-weight="600">Speech to text</text>
+          <text x="210" y="82" text-anchor="middle" font-size="12" fill="var(--ink-2)">faster-whisper, GPU</text>
+
+          <rect x="300" y="40" width="130" height="56" rx="10" fill="var(--panel-2)" stroke="var(--line)" />
+          <text x="365" y="64" text-anchor="middle" font-weight="600">Intent + tool call</text>
+          <text x="365" y="82" text-anchor="middle" font-size="12" fill="var(--ink-2)">Qwen 2.5 7B, Ollama</text>
+
+          <rect x="460" y="40" width="120" height="56" rx="10" fill="var(--panel-2)" stroke="var(--line)" />
+          <text x="520" y="64" text-anchor="middle" font-weight="600">Router</text>
+          <text x="520" y="82" text-anchor="middle" font-size="12" fill="var(--ink-2)">14 tools</text>
+
+          <rect x="610" y="30" width="150" height="76" rx="10" fill="var(--charge-soft)" stroke="var(--charge)" stroke-width="2" />
+          <text x="685" y="62" text-anchor="middle" font-weight="700" fill="var(--charge)">Battery guard</text>
+          <text x="685" y="82" text-anchor="middle" font-size="12" fill="var(--ink-2)">allow / re-plan / block</text>
+
+          <rect x="790" y="40" width="180" height="56" rx="10" fill="var(--panel-2)" stroke="var(--line)" />
+          <text x="880" y="64" text-anchor="middle" font-weight="600">Reply + speech</text>
+          <text x="880" y="82" text-anchor="middle" font-size="12" fill="var(--ink-2)">LLM phrasing, Piper TTS</text>
+
+          <rect x="470" y="160" width="140" height="56" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" />
+          <text x="540" y="184" text-anchor="middle" font-weight="600">Battery core</text>
+          <text x="540" y="202" text-anchor="middle" font-size="12" fill="var(--ink-2)">SOH + range (PyTorch)</text>
+          <rect x="630" y="160" width="120" height="56" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" />
+          <text x="690" y="184" text-anchor="middle" font-weight="600">Route planner</text>
+          <text x="690" y="202" text-anchor="middle" font-size="12" fill="var(--ink-2)">charger search</text>
+          <rect x="770" y="160" width="130" height="56" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" />
+          <text x="835" y="184" text-anchor="middle" font-weight="600">Companion app</text>
+          <text x="835" y="202" text-anchor="middle" font-size="12" fill="var(--ink-2)">coach, cost, resale</text>
+        </g>
+        <g stroke="var(--ink-3)" stroke-width="1.6" fill="none" marker-end="url(#arr)">
+          <path d="M120 68 H148" /><path d="M270 68 H298" /><path d="M430 68 H458" />
+          <path d="M580 68 H608" /><path d="M760 68 H788" />
+          <path d="M685 106 V130 H540 V158" /><path d="M685 106 V158" /><path d="M685 106 V130 H835 V158" />
+        </g>
+        <text x="300" y="130" font-size="12.5" fill="var(--ink-3)">LLM offline? rule-based parser takes over</text>
+        <path d="M365 96 V118" stroke="var(--ink-3)" stroke-dasharray="3 3" fill="none" />
+      </svg>
+      <figcaption>Every routing, charging and energy-using action passes the guard before it executes. Queries call the battery core directly.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>What it can do</h2>
+    <div class="grid">
+      <div class="card"><h3>Context-aware commands</h3><p>Destinations are range-checked before navigation starts.</p><p class="ex">"Take me to the nearest McD"</p></div>
+      <div class="card"><h3>Range questions in plain language</h3><p>Answers against the actual route, today's conditions and battery age.</p><p class="ex">"Will I make it to Mysore without stopping?"</p></div>
+      <div class="card"><h3>Automatic route and charger choice</h3><p>Dijkstra over a charger graph picks the fastest feasible plan and charges only as much as the next stretch needs.</p></div>
+      <div class="card"><h3>Mid-drive re-planning</h3><p>Add a detour while driving; the stop that minimises the detour is chosen and charging is re-planned from where the car is.</p><p class="ex">"Also stop at a McDonald's on the way"</p></div>
+      <div class="card"><h3>Proactive nudges</h3><p>Unprompted alerts with one-tap answers when the state changes.</p><p class="ex">"18% left, 56 km from home. Route via a charger?"</p></div>
+      <div class="card"><h3>Range-drop explanation</h3><p>Exact Shapley values over weather, AC, driving style, load and battery ageing, in kilometres.</p><p class="ex">"Why is my range lower than usual?"</p></div>
+      <div class="card"><h3>Companion app</h3><p>Personalized SOH and range, charging-habit coaching, cost per km against petrol, and an SOH-driven resale estimate with a two-year habit projection.</p></div>
+      <div class="card"><h3>Assisted driving and pre-cooling <span class="stub-tag">stubs</span></h3><p>They log what they would do (show the left turn camera, pre-cool on plug power) without touching hardware. Pre-cooling is still guard-checked.</p></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>The battery-intelligence core</h2>
+    <p>No real EV telemetry was available, so all training data is synthetic, generated to resemble public datasets
+      (NASA PCoE and CALCE ageing curves) and plausible vehicle physics. Both models are small PyTorch MLPs.</p>
+    <div class="stats">
+      <div class="stat"><strong class="num">0.55%</strong><span>SOH mean absolute error on battery cells held out from training</span></div>
+      <div class="stat"><strong class="num">4.2%</strong><span>Wh/km error for the range model, about the noise level built into the data</span></div>
+      <div class="stat"><strong class="num">32</strong><span>model evaluations per range explanation (exact Shapley over 5 factors)</span></div>
+      <div class="stat"><strong class="num">0</strong><span>cloud APIs or keys: STT, LLM, TTS and models all run locally</span></div>
+    </div>
+    <div class="tablewrap">
+    <table>
+      <thead><tr><th>Model</th><th>Inputs</th><th>Output</th><th>Used by</th></tr></thead>
+      <tbody>
+        <tr><td>State of health</td><td>Cycle count, temperature, charge C-rate, fast-charge ratio, depth of discharge, internal resistance, voltage and temperature features</td><td>SOH (capacity vs new)</td><td>Usable kWh, resale value, dashboard</td></tr>
+        <tr><td>Energy consumption</td><td>Temperature, HVAC mode, driving style, speed, gradient, load, road type, SOH</td><td>Wh per km</td><td>Personalized range, per-edge route energy, attribution</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p style="margin-top:14px">Predicting Wh/km rather than range directly is what makes range personalized: at 34 °C the same 46% charge is about 125 km with the AC off and 88 km with it on, and the model can say exactly how much each factor costs.</p>
+  </div>
+</section>
+
+<section id="run">
+  <div class="wrap">
+    <h2>Run it locally</h2>
+    <p>Windows, Python 3.12, Node 18+ and Ollama. An NVIDIA GPU is used automatically for speech recognition and the LLM when available. Full instructions are in the <a href="https://github.com/__REPO__#readme">README</a>.</p>
+<pre><code>cd backend
+uv venv --python 3.12 .venv
+uv pip install --python .venv\Scripts\python.exe -r requirements.txt
+uv pip install --python .venv\Scripts\python.exe torch --index-url https://download.pytorch.org/whl/cpu
+.venv\Scripts\python.exe -m data_gen.generate_all
+.venv\Scripts\python.exe -m training.train_soh
+.venv\Scripts\python.exe -m training.train_range
+ollama pull qwen2.5:7b
+.venv\Scripts\python.exe -m uvicorn app.main:app --port 8000
+
+cd ..\frontend
+npm install
+npm run dev        # open http://localhost:5173</code></pre>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>Limitations</h2>
+    <ul class="limits">
+      <li>All battery, trip and charging data is synthetic; model accuracy figures describe fit to that data, not real vehicles.</li>
+      <li>The road network is a hand-built graph of Bengaluru, Mysuru, Tumakuru and Kolar with approximate coordinates and fictional chargers.</li>
+      <li>Assisted driving and pre-cooling are logging stubs for a future hardware phase.</li>
+      <li>Single vehicle, single owner. Fleet features are out of scope.</li>
+    </ul>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">Final-year AIML major project prototype by Ansh Saini.</div>
+</footer>
+</body>
+</html>
