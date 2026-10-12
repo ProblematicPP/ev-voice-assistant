@@ -8,9 +8,25 @@ from app.config import HARD_MIN_SOC, RESERVE_SOC
 from app.context import AppContext
 
 
+@pytest.fixture(scope="module")
+def shared():
+    return AppContext()       # loading the OSM graph takes a few seconds; share it
+
+
 @pytest.fixture()
-def ctx():
-    return AppContext()
+def ctx(shared):
+    shared.reset()
+    return shared
+
+
+def N(ctx, place_id):
+    return ctx.net.place_node(place_id)
+
+
+def test_route_follows_real_roads(ctx):
+    p = ctx.planner.plan(N(ctx, "koramangala"), [N(ctx, "mysuru")], 0.95, ctx.battery.conditions(ctx.state))
+    assert 130 < p["totals"]["distance_km"] < 170          # real road distance is ~145 km
+    assert len(p["polyline"]) > 50                         # geometry for the map
 
 
 def test_soh_in_plausible_band(ctx):
@@ -35,13 +51,13 @@ def test_attribution_sums_to_total_drop(ctx):
 
 
 def test_short_trip_direct(ctx):
-    p = ctx.planner.plan("koramangala", ["indiranagar"], 0.5, ctx.battery.conditions(ctx.state))
+    p = ctx.planner.plan(N(ctx, "koramangala"), [N(ctx, "indiranagar")], 0.5, ctx.battery.conditions(ctx.state))
     assert p["status"] == "direct" and not p["stops"]
     assert guard.assess_plan(p).allow
 
 
 def test_long_trip_gets_charging_stop(ctx):
-    p = ctx.planner.plan("koramangala", ["mysuru"], 0.46, ctx.battery.conditions(ctx.state))
+    p = ctx.planner.plan(N(ctx, "koramangala"), [N(ctx, "mysuru")], 0.46, ctx.battery.conditions(ctx.state))
     assert p["status"] == "needs_charging" and p["stops"]
     for leg in p["legs"]:
         floor = HARD_MIN_SOC if leg["ends_at_charger"] else RESERVE_SOC
@@ -50,14 +66,14 @@ def test_long_trip_gets_charging_stop(ctx):
 
 
 def test_infeasible_plan_is_blocked(ctx):
-    p = ctx.planner.plan("mysuru", ["kolar"], 0.04, ctx.battery.conditions(ctx.state))
+    p = ctx.planner.plan(N(ctx, "mysuru"), [N(ctx, "kolar")], 0.04, ctx.battery.conditions(ctx.state))
     assert p["status"] == "infeasible"
     assert not guard.assess_plan(p).allow
 
 
 def test_router_never_activates_infeasible_route(ctx):
     from app.assistant.router import ToolRouter
-    ctx.state.soc, ctx.state.location = 0.04, "mysuru"
+    ctx.state.soc, ctx.state.location = 0.04, N(ctx, "mysuru")
     res = ToolRouter(ctx).execute("navigate_to", {"destination": "Kolar"})
     assert not res["ok"]
     assert ctx.state.active_plan is None
@@ -96,9 +112,11 @@ def test_fallback_parser(text, tool):
 
 
 def test_place_resolution(ctx):
-    assert ctx.net.resolve("mysore", "koramangala")["node"] == "mysuru"
-    assert ctx.net.resolve("nearest McD", "koramangala")["kind"] == "poi"
-    assert ctx.net.resolve("home", "mysuru")["node"] == "koramangala"
+    home = N(ctx, "koramangala")
+    assert ctx.net.resolve("mysore", home)["node"] == N(ctx, "mysuru")
+    assert ctx.net.resolve("nearest McD", home)["kind"] == "poi"
+    assert ctx.net.resolve("the airport", home)["place_id"] == "kempegowda_airport"
+    assert ctx.net.resolve("home", N(ctx, "mysuru"))["node"] == home
 
 
 @pytest.mark.parametrize("text,spoken", [

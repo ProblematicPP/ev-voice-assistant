@@ -6,8 +6,12 @@ const SCENARIOS = [
   { id: "hot_day_plugged_in", label: "Hot day, plugged in at home" },
   { id: "cold_morning", label: "Cold morning, aggressive driving" },
   { id: "full_battery", label: "Full battery" },
-  { id: "road_trip", label: "Road trip, 82% charge" },
+  { id: "road_trip", label: "Road trip, 74% charge" },
 ];
+
+// Teleport targets for demos (real OSM places)
+const LOCATIONS = ["koramangala", "whitefield", "indiranagar", "electronic_city", "kempegowda_airport", "kengeri",
+  "ramanagara", "channapatna", "maddur", "mandya", "mysuru", "tumakuru", "kolar", "hassan", "chikkaballapur"];
 
 /** Demo controls for the synthetic vehicle. Changes trigger proactive nudges server-side. */
 export default function SimControls({ state, network }) {
@@ -29,10 +33,22 @@ export default function SimControls({ state, network }) {
     timer.current = setTimeout(() => call("/sim/update", patch), debounce);
   };
   const val = (k) => draft[k] ?? v[k];
+  const places = Object.fromEntries((network?.places ?? []).map((p) => [p.id, p]));
+  const placeNode = (id) => places[id]?.node;
 
   return (
-    <section className="panel">
-      <h2>Demo controls <small>synthetic vehicle state</small></h2>
+    <div className="tab-body">
+      <p className="muted" style={{ marginTop: 0 }}>
+        Change the simulated car to trigger proactive nudges and re-planning. Scenarios reset everything else.
+      </p>
+      <h3>Scenarios</h3>
+      <div className="scenarios">
+        {SCENARIOS.map((s) => (
+          <button key={s.id} className="btn small" onClick={() => call(`/sim/scenario/${s.id}`)}>{s.label}</button>
+        ))}
+        <button className="btn small" onClick={() => call("/sim/reset")}>Reset</button>
+      </div>
+      <h3>Vehicle state</h3>
       <div className="sim-grid">
         <label className="field">
           <span>Charge <span className="val">{Math.round(val("soc") * 100)}%</span></span>
@@ -45,7 +61,7 @@ export default function SimControls({ state, network }) {
             onChange={(e) => update({ ambient_temp_c: +e.target.value }, 350)} />
         </label>
         <label className="field">
-          <span>Driving style <span className="val">{val("driving_style").toFixed(2)}</span> <span className="faint">(0 smooth, 1 aggressive)</span></span>
+          <span title="0 = smooth, 1 = aggressive">Driving style <span className="val">{val("driving_style").toFixed(2)}</span></span>
           <input type="range" min="0" max="1" step="0.01" value={val("driving_style")}
             onChange={(e) => update({ driving_style: +e.target.value }, 350)} />
         </label>
@@ -63,8 +79,10 @@ export default function SimControls({ state, network }) {
         </label>
         <label className="field">
           <span>Location {v.driving && <span className="faint">(set by route)</span>}</span>
-          <select value={v.location} disabled={v.driving} onChange={(e) => update({ location: e.target.value })}>
-            {network?.nodes.map((n) => <option key={n.id} value={n.id}>{n.name}</option>)}
+          <select value={LOCATIONS.find((id) => placeNode(id) === v.location) ?? ""} disabled={v.driving}
+            onChange={(e) => e.target.value && update({ location: e.target.value })}>
+            {!LOCATIONS.some((id) => placeNode(id) === v.location) && <option value="">{v.location_name}</option>}
+            {LOCATIONS.filter((id) => places[id]).map((id) => <option key={id} value={id}>{places[id].name}</option>)}
           </select>
         </label>
         <label className="field" style={{ alignSelf: "center" }}>
@@ -81,14 +99,10 @@ export default function SimControls({ state, network }) {
         </div>
       </div>
 
-      <div className="scenarios">
-        {SCENARIOS.map((s) => (
-          <button key={s.id} className="btn small" onClick={() => call(`/sim/scenario/${s.id}`)}>{s.label}</button>
-        ))}
-        <button className="btn small" onClick={() => call("/sim/reset")}>Reset</button>
-      </div>
       {error && <p className="status bad" role="alert">{error}</p>}
 
+      <h3>Event log</h3>
+      {state.events.length === 0 && <p className="faint">Nothing yet. Routes, charging, nudges and simulated features appear here.</p>}
       {state.events.length > 0 && (
         <div className="events" aria-label="Vehicle event log">
           {state.events.map((e, i) => (
@@ -96,6 +110,6 @@ export default function SimControls({ state, network }) {
           ))}
         </div>
       )}
-    </section>
+    </div>
   );
 }

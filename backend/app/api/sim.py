@@ -15,7 +15,7 @@ class Update(BaseModel):
     hvac_mode: str | None = None
     payload_kg: float | None = Field(None, ge=0, le=500)
     driving_style: float | None = Field(None, ge=0, le=1)
-    location: str | None = None
+    location: str | int | None = None   # place id or road node id
     plugged_in: bool | None = None
 
 
@@ -30,15 +30,19 @@ SCENARIOS = {
     "cold_morning": {"soc": 0.60, "ambient_temp_c": 8, "hvac_mode": "heat", "driving_style": 0.75},
     "full_battery": {"soc": 0.95, "ambient_temp_c": 26, "hvac_mode": "fan"},
     # Mysuru is just reachable direct; heat + AC mid-drive pushes it below reserve
-    "road_trip": {"soc": 0.82, "ambient_temp_c": 26, "hvac_mode": "fan"},
+    "road_trip": {"soc": 0.74, "ambient_temp_c": 26, "hvac_mode": "fan"},
 }
 
 
 def _apply(upd: dict):
     ctx = get_ctx()
     st = ctx.state
-    if "location" in upd and upd["location"] not in ctx.net.nodes:
-        raise HTTPException(400, f"unknown node {upd['location']}")
+    if "location" in upd:
+        loc = upd["location"]
+        if isinstance(loc, str) and loc in ctx.net.places:       # place id, e.g. "ramanagara"
+            upd["location"] = ctx.net.place_node(loc)
+        elif not (isinstance(loc, int) and 0 <= loc < ctx.net.n):
+            raise HTTPException(400, f"unknown location {loc}")
     if "hvac_mode" in upd and upd["hvac_mode"] not in ("off", "fan", "ac", "heat"):
         raise HTTPException(400, "hvac_mode must be off|fan|ac|heat")
     for k, v in upd.items():

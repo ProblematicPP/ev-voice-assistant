@@ -57,8 +57,7 @@ export default function VehicleStatePanel({ state, companion, explain }) {
   const b = state.battery;
   const weekly = companion?.charging_summary?.weekly_kwh?.map((w) => ({ ...w, week: w.week.slice(5) })) ?? [];
   return (
-    <section className="panel">
-      <h2>Battery health <small>{b.model.type}, MAE {(b.model.mae * 100).toFixed(2)}% SOH</small></h2>
+    <div className="tab-body">
       <div className="kv">
         <div><small>State of health</small><strong>{b.soh_pct}%</strong></div>
         <div><small>Usable capacity</small><strong>{b.usable_kwh} kWh</strong></div>
@@ -66,7 +65,9 @@ export default function VehicleStatePanel({ state, companion, explain }) {
         <div><small>Fast-charge share</small><strong>{pct(b.fast_charge_ratio)}</strong></div>
       </div>
 
-      <h3>Estimated SOH since purchase</h3>
+      <div className="grid-2">
+      <section>
+      <h3>Estimated battery health since purchase</h3>
       <div className="chart-box">
         <ResponsiveContainer>
           <LineChart data={b.trend} margin={{ top: 6, right: 8, left: -14, bottom: 0 }}>
@@ -74,13 +75,18 @@ export default function VehicleStatePanel({ state, companion, explain }) {
             <XAxis dataKey="date" tick={axis} tickFormatter={(d) => d.slice(0, 7)} minTickGap={40} stroke="var(--line)" />
             <YAxis tick={axis} domain={[0.8, 1]} tickFormatter={(v) => `${Math.round(v * 100)}%`} stroke="var(--line)" />
             <Tooltip content={<SohTooltip />} cursor={{ stroke: "var(--ink-3)", strokeDasharray: "3 3" }} />
-            <Line type="monotone" dataKey="soh" stroke="var(--accent)" strokeWidth={2} dot={false} activeDot={{ r: 5 }} />
+            <Line type="monotone" dataKey="soh" stroke="var(--accent)" strokeWidth={2} dot={false} activeDot={{ r: 5 }}
+              isAnimationActive={false} />
           </LineChart>
         </ResponsiveContainer>
       </div>
+      <p className="faint note">{b.model.type}; average error {(b.model.mae * 100).toFixed(2)}% on held-out cells.</p>
+      </section>
+      <section><Attribution explain={explain} /></section>
+      </div>
 
-      <Attribution explain={explain} />
-
+      <div className="grid-2">
+      <section>
       <h3>Charging energy per week</h3>
       <div className="chart-box">
         <ResponsiveContainer>
@@ -99,7 +105,8 @@ export default function VehicleStatePanel({ state, companion, explain }) {
       <div className="legend">
         {TYPES.map((t) => <span key={t.key}><i className="swatch" style={{ background: t.color }} />{t.label}</span>)}
       </div>
-
+      </section>
+      <section>
       <h3>Recent charging sessions</h3>
       <div style={{ overflowX: "auto" }}>
         <table className="simple">
@@ -117,6 +124,8 @@ export default function VehicleStatePanel({ state, companion, explain }) {
           </tbody>
         </table>
       </div>
-    </section>
+      </section>
+      </div>
+    </div>
   );
 }

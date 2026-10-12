@@ -18,7 +18,15 @@ def replan_with_stop(planner: RoutePlanner, state, cond: dict, stop_node: str) -
     remaining = remaining_destinations(state)
     dests = remaining[:-1] + [stop_node] + remaining[-1:] if remaining else [stop_node]
     new = planner.plan(state.location, dests, state.soc, cond)
+    if old and remaining:   # keep the friendly names (e.g. "McDonald's, Indiranagar") of existing stops
+        names = remaining_names(state)
+        new["destination_names"] = names[:-1] + [new["destination_names"][len(names) - 1]] + names[-1:]
     return new, _diff(old, new)
+
+
+def remaining_names(state) -> list[str]:
+    done = state.progress.get("waypoints_done", 0)
+    return state.active_plan["destination_names"][done:]
 
 
 def replan_destination(planner: RoutePlanner, state, cond: dict, dest_node: str) -> tuple[dict, dict | None]:

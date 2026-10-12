@@ -53,7 +53,7 @@ def drive(ctx, km: float) -> list[str]:
         events.append(f"Drove {km:.0f} km around {net.name(st.location)}.")
         return events
 
-    energy = bat.edge_energy_kwh(net.edges, net.elev, cond)
+    energy = bat.edge_energy_kwh(net, cond)
     plan, prog = st.active_plan, st.progress
     remaining = km
     while remaining > 1e-6 and st.active_plan:
@@ -123,7 +123,7 @@ def remaining_projection(ctx) -> dict | None:
     if not st.active_plan:
         return None
     cond = bat.conditions(st)
-    energy = bat.edge_energy_kwh(net.edges, net.elev, cond)
+    energy = bat.edge_energy_kwh(net, cond)
     usable = usable_kwh(cond["soh"])
     plan, prog = st.active_plan, st.progress
     soc, min_soc, km, at_risk = st.soc, st.soc, 0.0, False
@@ -151,9 +151,8 @@ def remaining_projection(ctx) -> dict | None:
 def home_projection(ctx) -> dict:
     """Could we get home right now without charging?"""
     st, net, bat = ctx.state, ctx.net, ctx.battery
-    home = VEHICLE["home_node"]
-    nodes, km, mins = net.shortest_path(st.location, home)
+    nodes, km, mins = net.shortest_path(st.location, ctx.home_node)
     cond = bat.conditions(st)
-    energy = bat.edge_energy_kwh(net.edges, net.elev, cond)
+    energy = bat.edge_energy_kwh(net, cond)
     kwh = sum(energy[(u, v)] for u, v in zip(nodes, nodes[1:]))
     return {"distance_km": round(km, 1), "arrival_soc": round(st.soc - kwh / bat.usable_kwh(), 3)}

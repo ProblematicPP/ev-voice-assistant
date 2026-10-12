@@ -81,7 +81,7 @@ export default function VehicleHeader({ state, health, connected }) {
           <span><b>{v.location_name}</b></span>
           <span className="num">{v.ambient_temp_c.toFixed(0)} °C outside</span>
           <span>{HVAC[v.hvac_mode]}</span>
-          <span>{v.plugged_in ? "Plugged in" : v.driving ? "Driving" : "Parked"}</span>
+          <span>{v.plugged_in ? "Plugged in" : v.driving ? (v.trip_km > 0 ? "Driving" : "Navigating") : "Parked"}</span>
           <span className="num">Odometer {Math.round(v.odometer_km).toLocaleString("en-IN")} km</span>
         </div>
         <div className="chips">

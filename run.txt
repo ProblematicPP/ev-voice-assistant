@@ -43,6 +43,9 @@ Step 5. Check everything is ready (optional)
 
 USING IT
 --------
+   - The right side has four tabs: Trip (real map + route), Battery, Ownership
+     and Simulator (demo controls). The app jumps to Trip when a route is made.
+     The map background needs internet; routing itself works offline.
    - Type in the box, or click the mic, speak, and click the mic again to send.
      Allow microphone access the first time.
    - Click anywhere on the page once so the browser allows spoken replies.
@@ -60,7 +63,7 @@ USING IT
      7. Scenario "Hot day, plugged in", then "yes"    -> pre-cooling (simulated)
      8. "Show the left turn camera"                   -> driver assist (simulated)
      9. "How are my charging habits?"                 -> companion coaching
-    10. Scenario "Road trip, 82% charge", "Take me to Mysuru", +30 km,
+    10. Scenario "Road trip, 74% charge", "Take me to Mysuru", +30 km,
         then set temperature 40 and Climate AC      -> "plan no longer safe" nudge
 
 
@@ -116,7 +119,8 @@ Needs: Windows, internet, Node.js 18+ (nodejs.org), Ollama (ollama.com),
         uv pip install --python .venv\Scripts\python.exe -r requirements.txt
         uv pip install --python .venv\Scripts\python.exe torch --index-url https://download.pytorch.org/whl/cpu
 
-   3. Generate the synthetic data and train the models (~2-3 minutes)
+   3. Download the OpenStreetMap map (~130 MB), build the road graph and generate the
+      synthetic data (~6-8 minutes), then train the models (~1 minute)
         .venv\Scripts\python.exe -m data_gen.generate_all
         .venv\Scripts\python.exe -m training.train_soh
         .venv\Scripts\python.exe -m training.train_range

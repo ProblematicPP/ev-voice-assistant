@@ -36,7 +36,7 @@ def _rules(ctx):
         ))
 
     # 2. Low battery, far from home, no charging planned
-    if not st.plugged_in and st.location != VEHICLE["home_node"] and not (st.active_plan and st.active_plan["stops"]):
+    if not st.plugged_in and st.location != ctx.home_node and not (st.active_plan and st.active_plan["stops"]):
         home = simulation.home_projection(ctx)
         if st.soc < 0.25 and home["arrival_soc"] < COMFORT_SOC:
             out.append((

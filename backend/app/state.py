@@ -8,7 +8,7 @@ from dataclasses import asdict, dataclass, field
 @dataclass
 class VehicleState:
     soc: float = 0.46
-    location: str = "koramangala"
+    location: int = 0                    # road-graph node id; set to home at reset
     ambient_temp_c: float = 34.0
     hvac_mode: str = "ac"
     payload_kg: float = 75.0

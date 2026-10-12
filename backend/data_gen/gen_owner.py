@@ -17,10 +17,26 @@ import pandas as pd
 
 from app.battery_core.ageing import simulate_cycles
 from app.config import DATA_DIR, HOME_PEAK_TARIFF_INR, HOME_TARIFF_INR, VEHICLE
-from data_gen.gen_network import CHARGERS
 from data_gen.physics import wh_per_km
 
 DAYS = 90
+# Chargers the owner used in the past (synthetic history - the live map uses real OSM chargers)
+# id, node, name, power_kw, price_per_kwh (INR), kind
+CHARGERS = [
+    ("home", "koramangala", "Home wallbox", 7.4, 7.5, "home_ac"),
+    ("ch_indira", "indiranagar", "Indiranagar EV Hub", 60, 21.0, "dc_fast"),
+    ("ch_ecity", "electronic_city", "Electronic City Tech Park", 30, 18.0, "dc_fast"),
+    ("ch_wf", "whitefield", "Whitefield Office Parking", 7.4, 12.0, "public_ac"),
+    ("ch_kengeri", "kengeri", "Kengeri Metro Charge Point", 50, 19.5, "dc_fast"),
+    ("ch_bidadi", "bidadi", "Bidadi Expressway Plaza", 120, 24.0, "dc_fast"),
+    ("ch_maddur", "maddur", "Maddur Food Court Chargers", 60, 22.0, "dc_fast"),
+    ("ch_mandya", "mandya", "Mandya Highway Charge", 30, 19.0, "dc_fast"),
+    ("ch_mysuru", "mysuru", "Mysuru Ring Road Hub", 60, 20.0, "dc_fast"),
+    ("ch_tumakuru", "tumakuru", "Tumakuru NH48 Charge", 50, 20.0, "dc_fast"),
+    ("ch_airport", "devanahalli", "Airport P4 Fast Charge", 60, 23.0, "dc_fast"),
+    ("ch_hoskote", "hoskote", "Hoskote Toll Plaza", 30, 19.0, "dc_fast"),
+    ("ch_hosur", "hosur", "Hosur SIPCOT Charge", 30, 18.5, "dc_fast"),
+]
 CHARGER_BY_ID = {c[0]: c for c in CHARGERS}
 
 # name, distance_km, highway_share, destination node

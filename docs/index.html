@@ -108,9 +108,9 @@ footer { padding: 40px 0 56px; color: var(--ink-3); font-size: 14.5px; }
     <div class="exchange" aria-label="Example conversation">
       <div>
         <div class="bubble user">Will I make it to Mysore without stopping?</div>
-        <div class="bubble bot">No. Mysuru is 156 km away and at today's consumption you'd run out about 62 km short. One 21-minute stop at Bidadi Expressway Plaza fixes it. Want me to start that route?</div>
+        <div class="bubble bot">No. Mysuru is 148 km away and at today's consumption you'd run out about 48 km short. One 18-minute stop at Magenta ChargeGrid fixes it. Want me to start that route?</div>
         <div class="bubble user">Yes</div>
-        <div class="bubble bot">Routing to Mysuru with a charging stop at Bidadi (arrive 27%, charge to 72%). Total 2 h 53 min, arriving with 15%.</div>
+        <div class="bubble bot">Routing to Mysuru with a charging stop at Magenta ChargeGrid (arrive 44%, charge to 80%). Total 2 h 47 min, arriving with 14%.</div>
         <div class="bubble nudge"><b>Volt noticed:</b> at 40 °C with AC on, you'd reach Mysuru at 7%, below the safe reserve. Re-plan with a charging stop?</div>
       </div>
       <div class="trace">
@@ -120,7 +120,7 @@ footer { padding: 40px 0 56px; color: var(--ink-3); font-size: 14.5px; }
           <li>A local LLM (<b>Qwen 3.5 4B via Ollama</b>) picks the tool <code>check_range_to("Mysore")</code>. It never invents numbers.</li>
           <li>The <b>range model</b> predicts Wh/km for every road segment under today's heat, AC, driving style and battery age.</li>
           <li>The <span class="guard">battery guard</span> compares predicted arrival charge with a 10% reserve: fail.</li>
-          <li>The <b>planner</b> searches charger combinations and picks the fastest plan that keeps every leg above the floor.</li>
+          <li>The <b>planner</b> searches real OpenStreetMap roads and chargers and picks the fastest plan that keeps every leg above the floor.</li>
           <li>The LLM phrases the reply using only those facts; <b>Piper</b> speaks it.</li>
         </ol>
       </div>
@@ -195,9 +195,9 @@ footer { padding: 40px 0 56px; color: var(--ink-3); font-size: 14.5px; }
     <div class="grid">
       <div class="card"><h3>Context-aware commands</h3><p>Destinations are range-checked before navigation starts.</p><p class="ex">"Take me to the nearest McD"</p></div>
       <div class="card"><h3>Range questions in plain language</h3><p>Answers against the actual route, today's conditions and battery age.</p><p class="ex">"Will I make it to Mysore without stopping?"</p></div>
-      <div class="card"><h3>Automatic route and charger choice</h3><p>Dijkstra over a charger graph picks the fastest feasible plan and charges only as much as the next stretch needs.</p></div>
+      <div class="card"><h3>Automatic route and charger choice</h3><p>Real Karnataka roads from OpenStreetMap (49,000 km). An A* search over charging states picks the fastest feasible plan and charges only as much as the next stretch needs.</p></div>
       <div class="card"><h3>Mid-drive re-planning</h3><p>Add a detour while driving; the stop that minimises the detour is chosen and charging is re-planned from where the car is.</p><p class="ex">"Also stop at a McDonald's on the way"</p></div>
-      <div class="card"><h3>Proactive nudges</h3><p>Unprompted alerts with one-tap answers when the state changes.</p><p class="ex">"18% left, 56 km from home. Route via a charger?"</p></div>
+      <div class="card"><h3>Proactive nudges</h3><p>Unprompted alerts with one-tap answers when the state changes.</p><p class="ex">"18% left, 55 km from home. Route via a charger?"</p></div>
       <div class="card"><h3>Range-drop explanation</h3><p>Exact Shapley values over weather, AC, driving style, load and battery ageing, in kilometres.</p><p class="ex">"Why is my range lower than usual?"</p></div>
       <div class="card"><h3>Companion app</h3><p>Personalized SOH and range, charging-habit coaching, cost per km against petrol, and an SOH-driven resale estimate with a two-year habit projection.</p></div>
       <div class="card"><h3>Assisted driving and pre-cooling <span class="stub-tag">stubs</span></h3><p>They log what they would do (show the left turn camera, pre-cool on plug power) without touching hardware. Pre-cooling is still guard-checked.</p></div>
@@ -214,7 +214,7 @@ footer { padding: 40px 0 56px; color: var(--ink-3); font-size: 14.5px; }
       <div class="stat"><strong class="num">0.55%</strong><span>SOH mean absolute error on battery cells held out from training</span></div>
       <div class="stat"><strong class="num">4.2%</strong><span>Wh/km error for the range model, about the noise level built into the data</span></div>
       <div class="stat"><strong class="num">32</strong><span>model evaluations per range explanation (exact Shapley over 5 factors)</span></div>
-      <div class="stat"><strong class="num">0</strong><span>cloud APIs or keys: STT, LLM, TTS and models all run locally</span></div>
+      <div class="stat"><strong class="num">49,435 km</strong><span>of real Karnataka roads from OpenStreetMap, routed offline</span></div>
     </div>
     <div class="tablewrap">
     <table>
@@ -254,7 +254,8 @@ npm run dev        # open http://localhost:5173</code></pre>
     <h2>Limitations</h2>
     <ul class="limits">
       <li>All battery, trip and charging data is synthetic; model accuracy figures describe fit to that data, not real vehicles.</li>
-      <li>The road network is a hand-built graph of Bengaluru, Mysuru, Tumakuru and Kolar with approximate coordinates and fictional chargers.</li>
+      <li>Roads, places and charger locations are real OpenStreetMap data for Karnataka, but OSM maps only 37 car chargers and almost never their power or price, so those values are estimated. Long trips can fail on these mapping gaps.</li>
+      <li>Road speeds are estimated from road class and city traffic, and OSM has no elevation, so hills are ignored.</li>
       <li>Assisted driving and pre-cooling are logging stubs for a future hardware phase.</li>
       <li>Single vehicle, single owner. Fleet features are out of scope.</li>
     </ul>
@@ -262,7 +263,7 @@ npm run dev        # open http://localhost:5173</code></pre>
 </section>
 
 <footer>
-  <div class="wrap">Final-year AIML major project prototype by Ansh Saini.</div>
+  <div class="wrap">Final-year AIML major project prototype by Ansh Saini. Map data © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>, ODbL.</div>
 </footer>
 </body>
 </html>

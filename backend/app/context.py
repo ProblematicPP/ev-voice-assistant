@@ -23,7 +23,12 @@ class AppContext:
 
     def reset(self):
         self.state = VehicleState(driving_style=self.battery.profile["driving_style"],
-                                  odometer_km=float(self.battery.profile["odometer_km"]))
+                                  odometer_km=float(self.battery.profile["odometer_km"]),
+                                  location=self.home_node)
+
+    @property
+    def home_node(self) -> int:
+        return self.net.place_node(VEHICLE["home_node"])
 
     # -- data -----------------------------------------------------------------
     def sessions(self) -> pd.DataFrame:
@@ -56,7 +61,8 @@ class AppContext:
         recent = self.sessions().tail(12).iloc[::-1].to_dict("records")
         return {
             "vehicle": {**st.public(), "location_name": self.net.name(st.location),
-                        "home_node": VEHICLE["home_node"], "name": VEHICLE["name"]},
+                        "home_node": self.home_node, "name": VEHICLE["name"],
+                        "lat": self.net.coords(st.location)[0], "lon": self.net.coords(st.location)[1]},
             "battery": self.battery.soh(),
             "range": self.battery.range(st),
             "route": st.active_plan,

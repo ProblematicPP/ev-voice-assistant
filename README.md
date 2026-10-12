@@ -36,7 +36,8 @@ uv venv --python 3.12 .venv
 uv pip install --python .venv\Scripts\python.exe -r requirements.txt
 uv pip install --python .venv\Scripts\python.exe torch --index-url https://download.pytorch.org/whl/cpu
 
-# Generate synthetic data and train both models (~2-3 minutes total)
+# Download the Karnataka OpenStreetMap extract (~130 MB, once), build the road graph,
+# generate the synthetic battery/owner data (~6-8 minutes total), then train both models
 .venv\Scripts\python.exe -m data_gen.generate_all
 .venv\Scripts\python.exe -m training.train_soh
 .venv\Scripts\python.exe -m training.train_range
@@ -97,12 +98,12 @@ Overrides: `$env:WHISPER_DEVICE = "cpu"` to force CPU, `$env:WHISPER_MODEL = "ba
 
 | Say / do | Shows |
 |---|---|
-| "Will I make it to Mysore without stopping?" | Range query → "no, ~60 km short", proposes a stop |
-| "Yes" | AI route determiner: auto-picks Bidadi 120 kW, charges only to what's needed |
+| "Will I make it to Mysore without stopping?" | Range query on the real 148 km road route → "no, ~48 km short", proposes a stop |
+| "Yes" | AI route determiner: picks a real OSM charger (Magenta ChargeGrid), charges only to what's needed; route drawn on the map |
 | Demo controls → **+30 km** | Simulated drive along the route |
 | "Also stop at a McDonald's on the way" | Mid-drive re-plan: picks the detour-minimising McD, adds a charger if needed |
-| Scenario **Road trip, 82% charge** → "Take me to Mysuru" → **+30 km** → set 40 °C and AC | Direct trip (arrive 16%) becomes unsafe → proactive nudge → "yes" re-plans with a short top-up |
-| Scenario **Low battery, far from home** | Nudge: "18% left, 56 km from home - route via a charger?" |
+| Scenario **Road trip, 74% charge** → "Take me to Mysuru" → **+30 km** → set 40 °C and AC | Direct trip (arrive 16%) becomes unsafe → proactive nudge → "yes" re-plans with a short top-up |
+| Scenario **Low battery, far from home** | Nudge: "18% left, 55 km from home - route via a charger?" |
 | "Why is my range lower than usual?" | Shapley range-drop attribution (AC, heat, style, load, ageing) |
 | "Take me to the nearest McD" | Context-aware command, range-checked before confirming |
 | Scenario **Hot day, plugged in** → "yes" | Predictive pre-cooling **stub** (grid power, guard-checked) |
@@ -122,20 +123,33 @@ backend/
       guard.py        feasibility checks every action must pass
       ageing.py       semi-empirical ageing model (data synthesis + SOH projection)
       core.py         BatteryCore facade other modules call
-    routing/        fake road graph, energy-aware planner, mid-drive re-planner
+    routing/        OpenStreetMap road graph, energy-aware planner, mid-drive re-planner
     assistant/      ② STT, Ollama client, tool schemas, router, fallback parser, nudges, pipeline
       stubs/          assisted_driving.py, precooling.py: HARDWARE STUBS (future phase)
     companion/      ③ coaching, cost per km, resale estimate
     api/            FastAPI routers + WebSocket hub
     simulation.py   demo drive simulation
-  data_gen/         synthetic dataset generators (physics.py = ground truth for synthesis only)
+  data_gen/         osm_fetch.py + build_osm_network.py (real map), synthetic battery/owner data
+                    generators (physics.py = ground truth for synthesis only)
   training/         train_soh.py, train_range.py
   data/, models/    generated outputs
   tests/
 frontend/src/       React UI: assistant, range ribbon, route map, battery, companion, demo controls
 ```
 
-## 7. Synthetic data
+## 7. Map data (OpenStreetMap)
+
+`data_gen/osm_fetch.py` downloads the Karnataka extract from openstreetmap.fr, and
+`data_gen/build_osm_network.py` turns it into a routing graph: major roads split at intersections,
+speeds from `maxspeed` or road class (reduced inside Bengaluru for traffic), the largest connected
+component kept, and towns, Bengaluru suburbs, the airport, car chargers (scooter and battery-swap
+networks excluded) and POIs snapped to the nearest road. The UI draws it on OpenStreetMap tiles with
+Leaflet; tiles need internet, routing does not.
+
+Map data © OpenStreetMap contributors, available under the
+[Open Database License](https://www.openstreetmap.org/copyright).
+
+## 8. Datasets
 
 | File | Rows | Purpose |
 |---|---|---|
@@ -144,14 +158,17 @@ frontend/src/       React UI: assistant, range ribbon, route map, battery, compa
 | `trips.csv` | 24k | trip segments with temp, HVAC, style, speed, gradient, load → Wh/km model |
 | `vehicle_bms_history.csv` | ~750 cycles | the demo car's BMS log since purchase → current SOH |
 | `owner_trips.csv`, `charging_history.csv` | 90 days | personalization (driving style, highway share), coaching, cost |
-| `network.json` | 25 nodes, 13 chargers | Bengaluru-Mysuru-Tumakuru-Kolar road graph, POIs |
+| `network.json` | 39,755 nodes, 49,435 km | **Real** Karnataka roads (motorway to secondary), 1,379 places, 37 car chargers, 371 POIs from OpenStreetMap |
 
 Model results (held-out): SOH MAE ≈ 0.55 % SOH (R² 0.99); range MAPE ≈ 4.2 % (≈ the 5 % noise put into
 the data). These numbers describe fit to *synthetic* data, not real-world accuracy.
 
-## 8. Honest limitations
+## 9. Honest limitations
 
 - All data is synthetic; the physics used to synthesize it is simplified.
 - Assisted driving and pre-cooling are logging stubs, not vehicle integrations.
-- The route network is a hand-built graph with approximate coordinates, not a real map.
+- Roads, places and charger locations are real (OpenStreetMap), but OSM maps only 37 car chargers in
+  Karnataka and gives power/price for almost none: those values are estimated and flagged in the UI.
+  Long trips (e.g. Bengaluru to Hubballi) can be reported unreachable because of these mapping gaps.
+- Road speeds are estimated from road class and city traffic; OSM has no elevation, so hills are ignored.
 - Voice replies use one English Piper voice; there is no Indian-English Piper voice yet.

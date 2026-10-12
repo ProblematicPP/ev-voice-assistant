@@ -1,11 +1,10 @@
 import { inr, lakh, pct } from "../api.js";
 
 export default function CompanionPanel({ companion }) {
-  if (!companion) return <section className="panel"><h2>Companion app</h2><p className="muted">Loading…</p></section>;
+  if (!companion) return <div className="tab-body"><p className="muted">Loading…</p></div>;
   const { battery, range, coaching, cost, resale } = companion;
   return (
-    <section className="panel">
-      <h2>Companion app <small>owner view</small></h2>
+    <div className="tab-body">
       <div className="kv">
         <div><small>Battery health</small><strong>{battery.soh_pct}%</strong></div>
         <div><small>Your range now</small><strong>{Math.round(range.personalized_km)} km</strong></div>
@@ -13,6 +12,8 @@ export default function CompanionPanel({ companion }) {
         <div><small>Est. resale value</small><strong>{lakh(resale.estimated_value_inr)}</strong></div>
       </div>
 
+      <div className="grid-2">
+      <section>
       <h3>Charging coach</h3>
       <div className="tips">
         {coaching.map((t) => (
@@ -23,6 +24,8 @@ export default function CompanionPanel({ companion }) {
         ))}
       </div>
 
+      </section>
+      <section>
       <h3>Running cost, last {cost.window_days} days</h3>
       <table className="simple">
         <tbody>
@@ -56,7 +59,9 @@ export default function CompanionPanel({ companion }) {
           </div>
         ))}
       </div>
-      <p className="faint" style={{ fontSize: 12, marginBottom: 0 }}>{resale.disclaimer}</p>
-    </section>
+      <p className="faint note">{resale.disclaimer}</p>
+      </section>
+      </div>
+    </div>
   );
 }

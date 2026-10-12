@@ -17,6 +17,16 @@ from app.battery_core.soh_model import SOHModel
 from app.config import DATA_DIR
 
 
+class EdgeEnergy:
+    """kWh per edge; index by (u, v) node pair or use .kwh[edge_id] directly."""
+
+    def __init__(self, net, kwh: np.ndarray):
+        self.net, self.kwh = net, kwh
+
+    def __getitem__(self, uv) -> float:
+        return float(self.kwh[self.net.eid[uv]])
+
+
 class BatteryCore:
     def __init__(self):
         self.profile = json.loads((DATA_DIR / "vehicle_profile.json").read_text())
@@ -71,22 +81,25 @@ class BatteryCore:
         return usable_kwh(self.soh_now)
 
     # -- Per-edge energy for the route planner -------------------------------
-    def edge_energy_kwh(self, edges: list[dict], node_elev: dict, cond: dict) -> dict:
-        """kWh for every directed edge under the given conditions (cached)."""
+    def edge_energy_kwh(self, net, cond: dict) -> "EdgeEnergy":
+        """kWh for every road edge under the given conditions (cached per conditions).
+
+        One batched model call covers all edges. OSM has no elevation, so gradient is 0.
+        """
         key = (round(cond["ambient_temp_c"], 1), cond["hvac_mode"], round(cond["driving_style"], 2),
-               round(cond.get("payload_kg", 75)), round(cond["soh"], 3))
-        if key in self._edge_cache:
-            return self._edge_cache[key]
-        rows, keys = [], []
-        for e in edges:
-            for a, b in ((e["from"], e["to"]), (e["to"], e["from"])):
-                grad = (node_elev[b] - node_elev[a]) / max(e["distance_km"], 0.1)
-                rows.append(self.range_model.segment_conditions(cond, e["road_type"], e["avg_speed_kmh"], grad))
-                keys.append((a, b, e["distance_km"]))
-        whkm = self.range_model.wh_per_km(rows)
-        table = {(a, b): float(w * d / 1000) for (a, b, d), w in zip(keys, whkm)}
-        self._edge_cache[key] = table
-        return table
+               round(cond.get("payload_kg", 75)), round(cond["soh"], 3), id(net))
+        if key not in self._edge_cache:
+            df = pd.DataFrame({
+                "ambient_temp_c": cond["ambient_temp_c"], "hvac_mode": cond["hvac_mode"],
+                "driving_style": cond["driving_style"], "avg_speed_kmh": net.espeed,
+                "gradient_m_per_km": 0.0, "payload_kg": cond.get("payload_kg", 75.0),
+                "road_type": net.eroad, "soh": cond["soh"],
+            })
+            whkm = self.range_model.wh_per_km(df)
+            if len(self._edge_cache) > 32:
+                self._edge_cache.clear()
+            self._edge_cache[key] = EdgeEnergy(net, whkm * net.ekm / 1000.0)
+        return self._edge_cache[key]
 
     def hvac_kw(self, mode: str, temp_c: float) -> float:
         # Rough HVAC draw for pre-cooling estimates (matches the training physics band)

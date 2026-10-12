@@ -90,11 +90,14 @@ button, input, select, textarea { font: inherit; color: inherit; }
   align-items: start;
 }
 .main { display: grid; gap: 16px; min-width: 0; }
+.app > * { min-width: 0; }   /* grid children must be allowed to shrink below their content */
 .two-up { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 @media (max-width: 1100px) { .two-up { grid-template-columns: 1fr; } }
 @media (max-width: 860px) {
-  .app { grid-template-columns: 1fr; padding: 12px 16px; }
-  .assistant { position: static !important; height: 70vh !important; }
+  .app { grid-template-columns: minmax(0, 1fr); padding: 12px 16px; }
+  .assistant { position: static !important; height: min(70vh, 620px) !important; }
+  .big-range { font-size: 52px; }
+  .ribbon-head { gap: 14px 22px; }
 }
 
 .panel {
@@ -206,20 +209,53 @@ button, input, select, textarea { font: inherit; color: inherit; }
 @keyframes pulse { 50% { box-shadow: 0 0 0 7px color-mix(in srgb, var(--bad) 22%, transparent); } }
 @media (prefers-reduced-motion: reduce) { .mic.recording { animation: none; } }
 
-/* ---------- route ---------- */
-.route-grid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 18px; }
-@media (max-width: 1000px) { .route-grid { grid-template-columns: 1fr; } }
-.map { width: 100%; height: auto; display: block; background: var(--panel-2); border-radius: var(--radius-sm); }
-.map .edge { stroke: var(--line); stroke-width: 2; }
-.map .edge.hwy { stroke-width: 3; }
-.map .route { stroke: var(--accent); stroke-width: 5; stroke-linecap: round; fill: none; }
-.map .node { fill: var(--panel); stroke: var(--ink-3); stroke-width: 1.5; }
-.map .node.here { fill: var(--accent); stroke: var(--panel); stroke-width: 3; }
-.map .node.dest { fill: var(--ink); stroke: var(--panel); stroke-width: 2; }
-.map .charger { fill: var(--charge); }
-.map .charger.idle { fill: var(--panel); stroke: var(--charge); stroke-width: 1.5; }
-.map text { font-size: 11px; fill: var(--ink-2); paint-order: stroke; stroke: var(--panel-2); stroke-width: 3px; }
-.map text.strong { fill: var(--ink); font-weight: 600; }
+/* ---------- tabs ---------- */
+.tabs-panel { padding: 0; overflow: hidden; }
+.tabbar {
+  display: flex; gap: 2px; padding: 0 12px;
+  border-bottom: 1px solid var(--line); overflow-x: auto;
+}
+.tab {
+  position: relative; display: inline-flex; align-items: center; gap: 8px;
+  padding: 13px 14px 12px; border: 0; background: none; cursor: pointer;
+  font-size: 15px; font-weight: 600; color: var(--ink-2); white-space: nowrap;
+}
+.tab:hover { color: var(--ink); }
+.tab.active { color: var(--ink); }
+.tab.active::after {
+  content: ""; position: absolute; left: 10px; right: 10px; bottom: -1px;
+  height: 3px; border-radius: 3px 3px 0 0; background: var(--accent);
+}
+.tab-badge { font-size: 11.5px; font-weight: 600; padding: 1px 7px; border-radius: 999px; }
+.tab-badge.info { background: var(--accent-soft); color: var(--accent); }
+.tab-badge.warn { background: var(--warn-soft); color: var(--warn); }
+.tab-badge.bad { background: var(--bad-soft); color: var(--bad); }
+.tab-body { padding: 18px; }
+.tab-body > h3:first-child, .tab-body section > h3:first-child { margin-top: 0; }
+.grid-2 {
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 28px;
+  margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--grid);
+}
+@media (max-width: 1100px) { .grid-2 { grid-template-columns: 1fr; gap: 8px; } }
+.note { font-size: 12.5px; margin: 8px 0 0; }
+
+/* ---------- trip ---------- */
+.map-view {
+  height: 440px; border-radius: var(--radius-sm); border: 1px solid var(--line);
+  background: var(--panel-2); z-index: 0;
+}
+@media (max-width: 860px) { .map-view { height: 320px; } }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .map-view .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(0.85) contrast(0.9); }
+}
+:root[data-theme="dark"] .map-view .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(0.85) contrast(0.9); }
+.leaflet-container { font-family: var(--font); }
+.trip-detail { margin-top: 18px; max-width: 760px; }
+.trip-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
+.trip-head h3 { margin: 0; font-size: 18px; color: var(--ink); }
+.empty-trip h3 { margin: 0 0 4px; font-size: 18px; color: var(--ink); }
+.empty-trip p { margin: 0; }
+.map-credit { font-size: 12.5px; margin: 16px 0 0; }
 
 .itinerary { list-style: none; margin: 0; padding: 0; position: relative; }
 .itinerary li { position: relative; padding: 0 0 14px 26px; }
@@ -236,7 +272,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .itinerary li.end .pin { border-color: var(--ink); background: var(--ink); }
 .itinerary .title { font-weight: 600; }
 .itinerary .sub { font-size: 13px; color: var(--ink-2); }
-.leg-note { font-size: 12.5px; color: var(--ink-3); margin: 2px 0 0; }
+.leg-note { font-size: 12.5px; color: var(--ink-3); margin: 0 0 4px; }
 .totals { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 10px; margin-bottom: 14px; }
 .totals div { background: var(--panel-2); border-radius: var(--radius-sm); padding: 8px 10px; }
 .totals small { display: block; font-size: 12px; color: var(--ink-2); }

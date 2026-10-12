@@ -41,7 +41,9 @@ class AssistantPipeline:
         else:
             route = "none (parked)" if not st.plugged_in else "none (parked, plugged in)"
         offer = st.pending_offer["text"] if st.pending_offer else "none"
-        places = ", ".join(n["name"] for n in net.nodes.values())
+        key = ["koramangala", "whitefield", "indiranagar", "electronic_city", "kempegowda_airport", "mysuru", "mandya",
+               "tumakuru", "kolar", "hassan", "mangaluru", "hubballi", "belagavi", "nandi_hills", "chikkaballapur"]
+        places = ", ".join(net.places[k]["name"] for k in key if k in net.places) + " and 1,000+ other Karnataka towns"
         return (
             "You are Volt, the voice assistant of an electric car in Bengaluru, India. You control navigation, "
             "climate and vehicle features through tools.\n"
@@ -51,7 +53,9 @@ class AssistantPipeline:
             "from your own knowledge and never invent numbers.\n"
             "2. The tools check the battery before acting. Report their verdict faithfully.\n"
             "3. If there is a pending offer and the user says yes/no/sure/ok, call respond_to_offer.\n"
-            "4. While driving, 'also stop at X' / 'detour to X' means add_stop; 'go to X instead' means navigate_to.\n"
+            "4. 'Take me to X' / 'navigate to X' / 'go to X' means navigate_to (it checks range itself). Use "
+            "check_range_to only for questions like 'will I make it' or 'can I reach'. While driving, "
+            "'also stop at X' / 'detour to X' means add_stop; 'go to X instead' means navigate_to.\n"
             "5. Pass place names exactly as the user said them (e.g. 'nearest McD', 'Mysore').\n"
             "6. Replies are read on a car screen: 1-3 short sentences, plain text.\n"
             f"CURRENT STATE: charge {st.soc:.0%}, personalized range {r['personalized_km']:.0f} km, "

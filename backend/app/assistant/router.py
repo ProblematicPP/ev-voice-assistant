@@ -148,7 +148,7 @@ class ToolRouter:
             return result("check_range_to", args, False, f"I couldn't find '{destination}' on the map.")
         bat, planner = self.ctx.battery, self.ctx.planner
         cond = self._cond()
-        energy = bat.edge_energy_kwh(self.ctx.net.edges, self.ctx.net.elev, cond)
+        energy = bat.edge_energy_kwh(self.ctx.net, cond)
         prof = planner.path_profile(self.st.location, target["node"], energy)
         arrive = self.st.soc - prof["energy_kwh"] / bat.usable_kwh()
         name = target["name"]
@@ -170,7 +170,7 @@ class ToolRouter:
         facts["verdict"] = "no"
         # What-if: would switching AC off be enough?
         if cond["hvac_mode"] in ("ac", "heat"):
-            e2 = bat.edge_energy_kwh(self.ctx.net.edges, self.ctx.net.elev, {**cond, "hvac_mode": "off"})
+            e2 = bat.edge_energy_kwh(self.ctx.net, {**cond, "hvac_mode": "off"})
             arr2 = self.st.soc - planner.path_profile(self.st.location, target["node"], e2)["energy_kwh"] / bat.usable_kwh()
             facts["arrival_with_climate_off"] = _pct(max(arr2, 0))
         plan = planner.plan(self.st.location, [target["node"]], self.st.soc, cond)
@@ -202,7 +202,7 @@ class ToolRouter:
             return result("add_stop", args, False, f"I couldn't find '{place}'.")
         old_eta = self.st.active_plan["totals"].get("total_min", 0)
         plan, diff = replanner.replan_with_stop(self.ctx.planner, self.st, self._cond(), target["node"])
-        plan["destination_names"][-2] = target["name"]
+        plan["destination_names"][-2 if len(plan["destination_names"]) > 1 else -1] = target["name"]
         decision = guard.assess_plan(plan)
         facts = self._plan_facts(plan, decision)
         facts["added_stop"] = target["name"]
@@ -249,7 +249,7 @@ class ToolRouter:
 
     def t_list_chargers(self, fast_only: bool = False):
         net, bat, planner = self.ctx.net, self.ctx.battery, self.ctx.planner
-        energy = bat.edge_energy_kwh(net.edges, net.elev, self._cond())
+        energy = bat.edge_energy_kwh(net, self._cond())
         rows = []
         for c in net.chargers.values():
             if c["kind"] == "home_ac" or (fast_only and c["kind"] != "dc_fast"):
