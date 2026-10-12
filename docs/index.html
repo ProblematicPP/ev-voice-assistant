@@ -74,6 +74,12 @@ figure svg { display: block; min-width: 720px; width: 100%; height: auto; }
 figcaption { font-size: 14px; color: var(--ink-3); margin-top: 10px; }
 svg text { font-family: "Barlow", sans-serif; }
 
+.shots { display: grid; gap: 14px; margin-top: 18px; }
+.shots figure { padding: 0; overflow: hidden; }
+.shots img { display: block; width: 100%; height: auto; }
+.shots figcaption { padding: 10px 14px 12px; margin: 0; }
+.shots .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 760px) { .shots .pair { grid-template-columns: 1fr; } }
 .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-top: 18px; }
 .stat { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; }
 .stat strong { display: block; font-family: "Barlow Semi Condensed", sans-serif; font-size: 36px; line-height: 1.05; }
@@ -127,6 +133,33 @@ footer { padding: 40px 0 56px; color: var(--ink-3); font-size: 14.5px; }
     </div>
   </div>
 </header>
+
+<section>
+  <div class="wrap">
+    <h2>The app</h2>
+    <p>The assistant chat sits on the left. The right side keeps the live range always visible and splits
+      everything else into four tabs: Trip, Battery, Ownership and Simulator.</p>
+    <div class="shots">
+      <figure>
+        <img src="images/trip.png" width="1440" height="1300" loading="lazy"
+          alt="Trip tab showing a Bengaluru to Mysuru route on real OpenStreetMap roads, with a charging stop at Magenta ChargeGrid and a stop-by-stop itinerary" />
+        <figcaption>Trip: the route follows real roads from OpenStreetMap; the charging stop was chosen automatically.</figcaption>
+      </figure>
+      <div class="pair">
+        <figure>
+          <img src="images/battery.png" width="1440" height="1000" loading="lazy"
+            alt="Battery tab with state-of-health trend, a breakdown of why range is lower than expected, and charging history" />
+          <figcaption>Battery: health trend, range-drop explanation, charging history.</figcaption>
+        </figure>
+        <figure>
+          <img src="images/ownership.png" width="1440" height="1000" loading="lazy"
+            alt="Ownership tab with charging-habit coaching, running cost per km and a resale projection" />
+          <figcaption>Ownership: charging coach, cost per km, resale projection.</figcaption>
+        </figure>
+      </div>
+    </div>
+  </div>
+</section>
 
 <section>
   <div class="wrap">

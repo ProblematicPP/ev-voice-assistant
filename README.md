@@ -2,6 +2,8 @@
 
 **Project page:** https://problematicpp.github.io/ev-voice-assistant/
 
+![Trip tab: a Bengaluru to Mysuru route on real OpenStreetMap roads with an automatically chosen charging stop](docs/images/trip.png)
+
 A single-vehicle, single-owner voice assistant whose every navigation/charging/energy action is checked
 against a **battery-intelligence core** (PyTorch SOH + personalized range models) before it executes.
 Everything runs locally on synthetic data: no API keys, no cloud.
@@ -79,6 +81,15 @@ npm run dev
 Open http://localhost:5173. API docs: http://localhost:8000/docs. The header shows whether the LLM is
 connected or the assistant is in rule-based mode.
 
+The page has the assistant chat on the left and four tabs on the right: **Trip** (real map, route and
+charging plan), **Battery** (health trend, range explanation, charging history), **Ownership**
+(charging coach, cost per km, resale) and **Simulator** (demo controls and event log). Tabs can be
+linked directly, e.g. `http://localhost:5173/#battery`.
+
+| Battery tab | Ownership tab |
+|---|---|
+| ![Battery tab](docs/images/battery.png) | ![Ownership tab](docs/images/ownership.png) |
+
 On first start the backend downloads the Whisper `small.en` model (~480 MB) and the Piper voice
 `en_US-lessac-medium` (~60 MB) once, then preloads both in the background.
 
@@ -100,7 +111,7 @@ Overrides: `$env:WHISPER_DEVICE = "cpu"` to force CPU, `$env:WHISPER_MODEL = "ba
 |---|---|
 | "Will I make it to Mysore without stopping?" | Range query on the real 148 km road route → "no, ~48 km short", proposes a stop |
 | "Yes" | AI route determiner: picks a real OSM charger (Magenta ChargeGrid), charges only to what's needed; route drawn on the map |
-| Demo controls → **+30 km** | Simulated drive along the route |
+| Simulator tab → **+30 km** | Simulated drive along the route |
 | "Also stop at a McDonald's on the way" | Mid-drive re-plan: picks the detour-minimising McD, adds a charger if needed |
 | Scenario **Road trip, 74% charge** → "Take me to Mysuru" → **+30 km** → set 40 °C and AC | Direct trip (arrive 16%) becomes unsafe → proactive nudge → "yes" re-plans with a short top-up |
 | Scenario **Low battery, far from home** | Nudge: "18% left, 55 km from home - route via a charger?" |
@@ -134,7 +145,8 @@ backend/
   training/         train_soh.py, train_range.py
   data/, models/    generated outputs
   tests/
-frontend/src/       React UI: assistant, range ribbon, route map, battery, companion, demo controls
+frontend/src/       React UI: assistant chat, range ribbon, and tabs for Trip (Leaflet map),
+                    Battery, Ownership (companion app) and Simulator (demo controls)
 ```
 
 ## 7. Map data (OpenStreetMap)

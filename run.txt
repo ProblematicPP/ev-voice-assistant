@@ -50,16 +50,16 @@ USING IT
      Allow microphone access the first time.
    - Click anywhere on the page once so the browser allows spoken replies.
      The "Voice replies on/off" button (top of the chat) mutes the voice.
-   - "Demo controls" at the bottom change the simulated car: charge, temperature,
-     AC, location, drive forward, and one-click scenarios.
+   - The Simulator tab changes the simulated car: charge, temperature, AC,
+     location, drive forward, and one-click scenarios.
 
    Demo script (in this order):
      1. "Will I make it to Mysore without stopping?"   -> says no, offers a stop
      2. "Yes"                                         -> route with auto-picked charger
-     3. Demo controls: +30 km                         -> car drives along the route
+     3. Simulator tab: +30 km                         -> car drives along the route
      4. "I'm hungry, find me a McDonald's on the way" -> mid-drive re-plan
      5. "Why is my range lower than usual?"           -> range-drop explanation
-     6. Scenario "Low battery, far from home"         -> proactive nudge, say "yes"
+     6. Simulator tab: "Low battery, far from home"   -> proactive nudge, say "yes"
      7. Scenario "Hot day, plugged in", then "yes"    -> pre-cooling (simulated)
      8. "Show the left turn camera"                   -> driver assist (simulated)
      9. "How are my charging habits?"                 -> companion coaching
