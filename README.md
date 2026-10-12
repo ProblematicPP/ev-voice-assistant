@@ -1,5 +1,7 @@
 # Volt: a battery-grounded voice assistant for EVs (prototype)
 
+**Project page:** https://problematicpp.github.io/ev-voice-assistant/
+
 A single-vehicle, single-owner voice assistant whose every navigation/charging/energy action is checked
 against a **battery-intelligence core** (PyTorch SOH + personalized range models) before it executes.
 Everything runs locally on synthetic data: no API keys, no cloud.
