@@ -1,0 +1,135 @@
+HOW TO RUN VOLT (EV VOICE ASSISTANT)
+====================================
+
+Everything is already installed on this laptop. Daily use is PART A.
+PART B is only for setting the project up on a new computer.
+
+
+PART A - RUNNING IT ON THIS LAPTOP
+----------------------------------
+
+Step 1. Start Ollama (the local AI model)
+   - Open the Start menu, search "Ollama", click it.
+     A llama icon appears in the system tray (bottom-right).
+   - Or, in any terminal:   ollama serve
+   - Check it has the model:   ollama list     (should show qwen3.5:4b)
+
+Step 2. Start the backend  (Terminal 1 - PowerShell)
+
+   cd "C:\Users\ansh2\Desktop\final year project\backend"
+   .venv\Scripts\python.exe -m uvicorn app.main:app --port 8000
+
+   Leave this window open. Wait ~30 seconds while it loads the speech
+   models onto the GPU and warms up the AI model.
+
+Step 3. Start the frontend  (Terminal 2 - a second PowerShell window)
+
+   cd "C:\Users\ansh2\Desktop\final year project\frontend"
+   npm run dev
+
+   Leave this window open too.
+
+Step 4. Open the app
+   Go to  http://localhost:5173  in Chrome or Edge.
+   (If Terminal 2 printed a different port such as 5174, use that.)
+
+Step 5. Check everything is ready (optional)
+   Open  http://localhost:8000/api/health
+   Ready when you see:
+     "llm": ... "available": true
+     "stt": ... "loaded": true, "device": "cuda"
+     "tts": ... "loaded": true
+   The app header also shows "LLM qwen3.5:4b" when the AI is connected.
+
+
+USING IT
+--------
+   - Type in the box, or click the mic, speak, and click the mic again to send.
+     Allow microphone access the first time.
+   - Click anywhere on the page once so the browser allows spoken replies.
+     The "Voice replies on/off" button (top of the chat) mutes the voice.
+   - "Demo controls" at the bottom change the simulated car: charge, temperature,
+     AC, location, drive forward, and one-click scenarios.
+
+   Demo script (in this order):
+     1. "Will I make it to Mysore without stopping?"   -> says no, offers a stop
+     2. "Yes"                                         -> route with auto-picked charger
+     3. Demo controls: +30 km                         -> car drives along the route
+     4. "I'm hungry, find me a McDonald's on the way" -> mid-drive re-plan
+     5. "Why is my range lower than usual?"           -> range-drop explanation
+     6. Scenario "Low battery, far from home"         -> proactive nudge, say "yes"
+     7. Scenario "Hot day, plugged in", then "yes"    -> pre-cooling (simulated)
+     8. "Show the left turn camera"                   -> driver assist (simulated)
+     9. "How are my charging habits?"                 -> companion coaching
+    10. Scenario "Road trip, 82% charge", "Take me to Mysuru", +30 km,
+        then set temperature 40 and Climate AC      -> "plan no longer safe" nudge
+
+
+STOPPING IT
+-----------
+   - Press Ctrl+C in Terminal 1 and Terminal 2 (or just close them).
+   - Ollama can keep running in the tray; right-click its icon > Quit to stop it.
+
+
+TROUBLESHOOTING
+---------------
+   "Connecting to the backend..." never goes away
+       -> Terminal 1 isn't running or crashed. Start Step 2 again.
+
+   Header says "LLM offline, rule-based mode"
+       -> Ollama isn't running (Step 1). The app still works with simpler
+          keyword understanding. It reconnects within ~20 s of Ollama starting.
+
+   First reply is very slow (a minute or more)
+       -> Normal only on the first AI request after Ollama starts (it prepares
+          the GPU). The backend does this warm-up itself; wait ~30-60 s after
+          starting before demoing.
+
+   "address already in use" / port 8000 busy
+       -> An old backend is still running. Close old terminals, or run:
+          Get-NetTCPConnection -LocalPort 8000 -State Listen | % { Stop-Process -Id $_.OwningProcess -Force }
+
+   Mic button does nothing / "Microphone access was blocked"
+       -> Allow the microphone in the browser's site settings (lock icon in
+          the address bar), then reload.
+
+   No spoken replies
+       -> Click once anywhere on the page, and check "Voice replies on".
+
+   Run the automated tests (optional)
+       cd "C:\Users\ansh2\Desktop\final year project\backend"
+       .venv\Scripts\python.exe -m pytest -q
+
+
+PART B - FIRST-TIME SETUP ON A NEW COMPUTER
+-------------------------------------------
+Needs: Windows, internet, Node.js 18+ (nodejs.org), Ollama (ollama.com),
+       Python's "uv" tool (pip install uv). NVIDIA GPU optional but faster.
+
+   1. Get the code
+        git clone https://github.com/ProblematicPP/ev-voice-assistant.git
+        cd ev-voice-assistant
+
+   2. Backend environment (uv downloads Python 3.12 automatically)
+        cd backend
+        uv venv --python 3.12 .venv
+        uv pip install --python .venv\Scripts\python.exe -r requirements.txt
+        uv pip install --python .venv\Scripts\python.exe torch --index-url https://download.pytorch.org/whl/cpu
+
+   3. Generate the synthetic data and train the models (~2-3 minutes)
+        .venv\Scripts\python.exe -m data_gen.generate_all
+        .venv\Scripts\python.exe -m training.train_soh
+        .venv\Scripts\python.exe -m training.train_range
+
+   4. Download the AI model (~3.3 GB)
+        ollama pull qwen3.5:4b
+
+   5. Frontend packages
+        cd ..\frontend
+        npm install
+
+   6. Now follow PART A (use the cloned folder instead of the Desktop path).
+      The first backend start also downloads the speech-recognition model
+      (~480 MB) and the voice (~60 MB) once.
+
+Project page: https://problematicpp.github.io/ev-voice-assistant/

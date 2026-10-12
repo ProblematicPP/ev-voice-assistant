@@ -124,6 +124,9 @@ def test_cross_site_requests_refused():
             ws.receive_text()
     with c.websocket_connect("/api/ws", headers={"Origin": "http://localhost:5173"}) as ws:
         assert '"state"' in ws.receive_text()
+    with c.websocket_connect("/api/ws", headers={"Origin": "http://localhost:5174"}) as ws:   # Vite fallback port
+        assert '"state"' in ws.receive_text()
+    assert c.post("/api/sim/reset", headers={"Origin": "http://localhost.evil.example"}).status_code == 403
 
 
 def test_audio_decode_is_capped():
