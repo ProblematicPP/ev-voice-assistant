@@ -40,7 +40,7 @@ MAX_AUDIO_SECONDS = 30
 
 # ---- Local models -----------------------------------------------------------
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5:7b")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen3.5:4b")
 OLLAMA_TIMEOUT_S = float(os.getenv("OLLAMA_TIMEOUT_S", "90"))
 
 WHISPER_MODEL = os.getenv("WHISPER_MODEL", "small.en")

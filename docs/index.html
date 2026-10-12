@@ -117,7 +117,7 @@ footer { padding: 40px 0 56px; color: var(--ink-3); font-size: 14.5px; }
         <p style="margin-top:0"><b>What happened behind that first answer</b></p>
         <ol>
           <li>Speech transcribed locally by <b>Whisper</b>.</li>
-          <li>A local LLM (<b>Qwen 2.5 via Ollama</b>) picks the tool <code>check_range_to("Mysore")</code>. It never invents numbers.</li>
+          <li>A local LLM (<b>Qwen 3.5 4B via Ollama</b>) picks the tool <code>check_range_to("Mysore")</code>. It never invents numbers.</li>
           <li>The <b>range model</b> predicts Wh/km for every road segment under today's heat, AC, driving style and battery age.</li>
           <li>The <span class="guard">battery guard</span> compares predicted arrival charge with a 10% reserve: fail.</li>
           <li>The <b>planner</b> searches charger combinations and picks the fastest plan that keeps every leg above the floor.</li>
@@ -152,7 +152,7 @@ footer { padding: 40px 0 56px; color: var(--ink-3); font-size: 14.5px; }
 
           <rect x="300" y="40" width="130" height="56" rx="10" fill="var(--panel-2)" stroke="var(--line)" />
           <text x="365" y="64" text-anchor="middle" font-weight="600">Intent + tool call</text>
-          <text x="365" y="82" text-anchor="middle" font-size="12" fill="var(--ink-2)">Qwen 2.5 7B, Ollama</text>
+          <text x="365" y="82" text-anchor="middle" font-size="12" fill="var(--ink-2)">Qwen 3.5 4B, Ollama</text>
 
           <rect x="460" y="40" width="120" height="56" rx="10" fill="var(--panel-2)" stroke="var(--line)" />
           <text x="520" y="64" text-anchor="middle" font-weight="600">Router</text>
@@ -240,7 +240,7 @@ uv pip install --python .venv\Scripts\python.exe torch --index-url https://downl
 .venv\Scripts\python.exe -m data_gen.generate_all
 .venv\Scripts\python.exe -m training.train_soh
 .venv\Scripts\python.exe -m training.train_range
-ollama pull qwen2.5:7b
+ollama pull qwen3.5:4b
 .venv\Scripts\python.exe -m uvicorn app.main:app --port 8000
 
 cd ..\frontend

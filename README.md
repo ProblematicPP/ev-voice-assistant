@@ -46,13 +46,17 @@ uv pip install --python .venv\Scripts\python.exe torch --index-url https://downl
 ## 3. Local LLM (Ollama)
 
 ```powershell
-ollama pull qwen2.5:7b      # ~4.7 GB, fits the RTX 4050's 6 GB VRAM
+ollama pull qwen3.5:4b      # ~3.3 GB, fits the RTX 4050's 6 GB VRAM with room for Whisper
 ollama serve                # usually already running as a background service after install
 ```
 
-`qwen2.5:7b` has reliable native tool calling. On a weaker machine use `qwen2.5:3b` and set
-`$env:OLLAMA_MODEL = "qwen2.5:3b"` before starting the backend. The first request after a cold
-start takes ~10-20 s while the model loads; after that, turns take ~1-3 s.
+`qwen3.5:4b` has native tool calling; the backend disables its "thinking" mode for fast replies.
+To use another model, e.g. `qwen2.5:7b`, set `$env:OLLAMA_MODEL = "qwen2.5:7b"` before starting the
+backend. The backend warms the model up at startup, because the very first call compiles CUDA kernels
+and can take over a minute.
+
+Measured on an RTX 4050 laptop: the LLM generates ~43 tokens/s, a full assistant turn (tool choice,
+guarded execution, phrased reply) takes ~4 s, and GPU speech-to-text takes ~0.5 s.
 
 ## 4. Run
 

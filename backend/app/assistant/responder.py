@@ -10,7 +10,9 @@ import json
 PHRASE_INSTRUCTION = (
     "Now reply to the driver in 1-3 short sentences using ONLY the facts in the tool results above. "
     "Keep every number exactly as given (%, km, minutes, ₹). If the guard blocked an action, say so plainly "
-    "and give the suggested alternative. If a tool asked a question (e.g. 'Want me to...?'), end with that question. "
+    "and give the suggested alternative. If a result has \"stub\": true it is a simulated feature with no "
+    "sensors: add a short '(simulated)' and never claim anything was detected or sensed. "
+    "If a tool asked a question (e.g. 'Want me to...?'), end with that question. "
     "No markdown, no lists, no emojis."
 )
 

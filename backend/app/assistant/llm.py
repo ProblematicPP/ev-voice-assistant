@@ -39,6 +39,7 @@ class OllamaClient:
             "model": self.model,
             "messages": messages,
             "stream": False,
+            "think": False,          # Qwen 3.x reasons by default; skip it for snappy tool calls
             "keep_alive": "30m",
             "options": {"temperature": temperature, "num_ctx": 4096},
         }

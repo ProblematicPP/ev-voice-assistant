@@ -36,9 +36,18 @@ def _preload_speech():
             logging.getLogger("startup").warning("preload failed for %s: %s", loader.__module__, exc)
 
 
+async def _warm_llm():
+    """First Ollama call after start compiles CUDA kernels (can take a minute); do it now, not mid-demo."""
+    with contextlib.suppress(Exception):
+        if await pipeline.llm.available():
+            await pipeline.llm.chat([{"role": "user", "content": "hi"}])
+            logging.getLogger("startup").info("LLM warmed up")
+
+
 @contextlib.asynccontextmanager
 async def lifespan(_app):
     task = asyncio.create_task(_nudge_loop())
+    asyncio.create_task(_warm_llm())
     asyncio.get_running_loop().run_in_executor(None, _preload_speech)
     yield
     task.cancel()
