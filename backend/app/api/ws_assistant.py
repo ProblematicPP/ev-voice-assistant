@@ -8,7 +8,7 @@ from pydantic import BaseModel
 
 from app.api.hub import hub
 from app.assistant import stt, tts
-from app.config import MAX_AUDIO_BYTES, is_local_origin
+from app.config import ALLOWED_ORIGINS, MAX_AUDIO_BYTES
 from app.context import get_ctx
 
 router = APIRouter(prefix="/api", tags=["assistant"])
@@ -37,7 +37,7 @@ async def ws_endpoint(ws: WebSocket):
     # Browsers don't apply CORS to WebSockets, so check Origin ourselves; otherwise any
     # website open in the browser could drive the assistant via ws://localhost.
     origin = ws.headers.get("origin")
-    if origin and not is_local_origin(origin):
+    if origin and origin not in ALLOWED_ORIGINS:
         await ws.close(code=1008)
         return
     await hub.connect(ws)

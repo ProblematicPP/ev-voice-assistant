@@ -11,7 +11,7 @@ from app.api import battery, companion, routes, sim, ws_assistant
 from app.api.hub import hub
 from app.assistant import stt, tts
 from app.assistant.pipeline import AssistantPipeline
-from app.config import OLLAMA_MODEL, PIPER_VOICE, WHISPER_MODEL, is_local_origin
+from app.config import ALLOWED_ORIGINS, OLLAMA_MODEL, PIPER_VOICE, WHISPER_MODEL
 from app.context import get_ctx
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
@@ -54,7 +54,7 @@ async def lifespan(_app):
 
 
 app = FastAPI(title="EV Voice Assistant - Battery-Intelligence Core", lifespan=lifespan)
-app.add_middleware(CORSMiddleware, allow_origin_regex=r"https?://(localhost|127\.0\.0\.1)(:\d+)?",
+app.add_middleware(CORSMiddleware, allow_origins=sorted(ALLOWED_ORIGINS),
                    allow_methods=["*"], allow_headers=["*"])
 
 
@@ -64,7 +64,7 @@ async def reject_cross_site_writes(request: Request, call_next):
     from executing, so any state-changing request carrying a foreign Origin is refused.
     Requests without an Origin header (curl, tests) are allowed - they can't come from a web page."""
     origin = request.headers.get("origin")
-    if request.method not in ("GET", "HEAD", "OPTIONS") and origin and not is_local_origin(origin):
+    if request.method not in ("GET", "HEAD", "OPTIONS") and origin and origin not in ALLOWED_ORIGINS:
         return JSONResponse({"detail": "Cross-origin request refused"}, status_code=403)
     return await call_next(request)
 for r in (battery, companion, routes, sim, ws_assistant):

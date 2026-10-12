@@ -31,7 +31,6 @@ Step 3. Start the frontend  (Terminal 2 - a second PowerShell window)
 
 Step 4. Open the app
    Go to  http://localhost:5173  in Chrome or Edge.
-   (If Terminal 2 printed a different port such as 5174, use that.)
 
 Step 5. Check everything is ready (optional)
    Open  http://localhost:8000/api/health
@@ -85,9 +84,10 @@ TROUBLESHOOTING
           the GPU). The backend does this warm-up itself; wait ~30-60 s after
           starting before demoing.
 
-   "address already in use" / port 8000 busy
-       -> An old backend is still running. Close old terminals, or run:
-          Get-NetTCPConnection -LocalPort 8000 -State Listen | % { Stop-Process -Id $_.OwningProcess -Force }
+   "address already in use" / port 8000 busy, or "Port 5173 is in use"
+       -> An old backend or frontend is still running. Close old terminals, or run:
+          Get-NetTCPConnection -LocalPort 8000,5173 -State Listen | % { Stop-Process -Id $_.OwningProcess -Force }
+          (The frontend must use port 5173 - for security the backend only accepts it there.)
 
    Mic button does nothing / "Microphone access was blocked"
        -> Allow the microphone in the browser's site settings (lock icon in

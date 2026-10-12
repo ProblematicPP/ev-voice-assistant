@@ -34,17 +34,8 @@ PETROL_INR_PER_L = 102.9
 PETROL_CAR_KMPL = 15.0
 
 # ---- Security: only the local UI may drive the assistant ---------------------
-ALLOWED_ORIGINS = {"http://localhost:5173", "http://127.0.0.1:5173"}   # CORS list for the default port
-
-
-def is_local_origin(origin: str) -> bool:
-    """The UI may run on any local port (Vite picks 5174 if 5173 is busy); other sites are refused."""
-    from urllib.parse import urlparse
-    try:
-        u = urlparse(origin)
-    except ValueError:
-        return False
-    return u.scheme in ("http", "https") and u.hostname in ("localhost", "127.0.0.1")
+# The UI is pinned to port 5173 (vite strictPort), so the allowlist can stay exact.
+ALLOWED_ORIGINS = {"http://localhost:5173", "http://127.0.0.1:5173"}
 MAX_AUDIO_BYTES = 5 * 1024 * 1024      # ~5 min of opus; push-to-talk clips are tiny
 MAX_AUDIO_SECONDS = 30
 
