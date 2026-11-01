@@ -198,7 +198,8 @@ class RoutePlanner:
                 # (e.g. a McDonald's near Maddur on the way to Mysuru). Retry with the previous leg
                 # arriving with enough to drive this one direct.
                 if i > 0 and (i - 1) not in boost:
-                    need = self.path_profile(destinations[i - 1], dest, energy)["energy_kwh"] / usable + min_arr
+                    # +2 points so SOC rounding can't leave the next leg a hair under its floor
+                    need = self.path_profile(destinations[i - 1], dest, energy)["energy_kwh"] / usable + min_arr + 0.02
                     if need <= 1.0:
                         boost[i - 1] = need
                         return self.plan(origin, destinations, soc, cond, min_final_soc, exclude, boost)
