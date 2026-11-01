@@ -1,0 +1,389 @@
+{
+  "generated": "2026-11-02 01:24",
+  "gpu": "NVIDIA GeForce RTX 4050 Laptop GPU, 6141 MiB",
+  "models": {
+    "soh": {
+      "test_cells": 7,
+      "test_cycles": 5965,
+      "mae_pct_points": 0.7337616362747568,
+      "mape_pct": 0.9626072630528936
+    },
+    "range_fleet": {
+      "val_trips": 4769,
+      "mae_wh_km": 6.40007934794283,
+      "mape_pct": 4.1882902448821255
+    },
+    "range_owner": {
+      "held_out_trips": 54,
+      "fleet_mae_wh_km": 10.482565265231658,
+      "fleet_mape_pct": 7.717191233233356,
+      "personal_mae_wh_km": 9.064418227584275,
+      "personal_mape_pct": 6.378084821732491
+    }
+  },
+  "routing": {
+    "trips": 108,
+    "conditions": "34 \u00b0C, AC on, current battery health",
+    "baseline_stranded_pct": 14.814814814814815,
+    "baseline_below_reserve_pct": 10.185185185185185,
+    "ours_stranded_pct": 0.0,
+    "ours_below_reserve_pct": 0.0,
+    "ours_refused_pct": 0.0,
+    "both_completed": 92,
+    "avg_total_min_ours": 98.03260869565217,
+    "avg_total_min_baseline": 102.63409124978905,
+    "avg_stops_ours": 0.2717391304347826,
+    "avg_stops_baseline": 0.1956521739130435
+  },
+  "fleet": {
+    "longevity": {
+      "health_aware": {
+        "avg_soh_end": 0.7887,
+        "capacity_lost_pct_points": 4.4,
+        "min_soh_end": 0.5785,
+        "below_70pct": 11,
+        "avg_years_to_70pct": 1.99,
+        "fast_charges": 3004
+      },
+      "first_available": {
+        "avg_soh_end": 0.771,
+        "capacity_lost_pct_points": 6.17,
+        "min_soh_end": 0.5698,
+        "below_70pct": 13,
+        "avg_years_to_70pct": 1.98,
+        "fast_charges": 3901
+      },
+      "battery_life_extension_pct": 40.2,
+      "fast_charges_avoided": 897,
+      "days": 365
+    },
+    "demand_model": {
+      "mae": 0.8690780873888384,
+      "baseline_mae": 0.8609724232559939,
+      "mae_rainy_hours": 0.9202442359593179,
+      "baseline_mae_rainy_hours": 0.9353490658800392,
+      "test_days": 21,
+      "test_rows": 6048,
+      "mean_bookings_per_zone_hour": 1.3333333333333333,
+      "mae_vs_true_rate": 0.1126704292469239,
+      "baseline_mae_vs_true_rate": 0.16947617588215655
+    },
+    "rebalance": {
+      "08": {
+        "expected_lost_before": 27.11,
+        "expected_lost_after": 24.61,
+        "reduction_pct": 9.2,
+        "moves": 8
+      },
+      "18": {
+        "expected_lost_before": 32.8,
+        "expected_lost_after": 30.71,
+        "reduction_pct": 6.4,
+        "moves": 8
+      }
+    },
+    "today_fast_charges": {
+      "health_aware": 9,
+      "first_available": 13
+    }
+  },
+  "assistant": {
+    "fallback": {
+      "prompts": 17,
+      "success_pct": 100.0,
+      "median_latency_s": 0.05122739996295422,
+      "p95_latency_s": 1.2083319199737148,
+      "failures": [],
+      "rows": [
+        {
+          "text": "Will I make it to Mysore without stopping?",
+          "expected": "check_range_to",
+          "got": "check_range_to",
+          "ok": true,
+          "latency_s": 0.2621182999573648,
+          "source": "fallback"
+        },
+        {
+          "text": "Take me to Mysuru",
+          "expected": "navigate_to",
+          "got": "navigate_to",
+          "ok": true,
+          "latency_s": 0.4332841000286862,
+          "source": "fallback"
+        },
+        {
+          "text": "Take me to the nearest McDonald's",
+          "expected": "navigate_to",
+          "got": "navigate_to",
+          "ok": true,
+          "latency_s": 0.0025561999063938856,
+          "source": "fallback"
+        },
+        {
+          "text": "Why is my range lower than usual?",
+          "expected": "explain_range",
+          "got": "explain_range",
+          "ok": true,
+          "latency_s": 0.007873799884691834,
+          "source": "fallback"
+        },
+        {
+          "text": "How much charge do I have left?",
+          "expected": "get_battery_status",
+          "got": "get_battery_status",
+          "ok": true,
+          "latency_s": 0.01194640004541725,
+          "source": "fallback"
+        },
+        {
+          "text": "Find me a fast charger nearby",
+          "expected": "list_chargers",
+          "got": "list_chargers",
+          "ok": true,
+          "latency_s": 0.05122739996295422,
+          "source": "fallback"
+        },
+        {
+          "text": "Turn off the AC",
+          "expected": "set_climate",
+          "got": "set_climate",
+          "ok": true,
+          "latency_s": 0.012672499986365438,
+          "source": "fallback"
+        },
+        {
+          "text": "Pre-cool the cabin for 15 minutes",
+          "expected": "precool_cabin",
+          "got": "precool_cabin",
+          "ok": true,
+          "latency_s": 0.0007590999593958259,
+          "source": "fallback"
+        },
+        {
+          "text": "Show the left turn camera",
+          "expected": "assisted_driving",
+          "got": "assisted_driving",
+          "ok": true,
+          "latency_s": 0.0002476000227034092,
+          "source": "fallback"
+        },
+        {
+          "text": "How are my charging habits?",
+          "expected": "get_charging_coaching",
+          "got": "get_charging_coaching",
+          "ok": true,
+          "latency_s": 0.01748470007441938,
+          "source": "fallback"
+        },
+        {
+          "text": "Am I braking too hard?",
+          "expected": "get_eco_driving_coaching",
+          "got": "get_eco_driving_coaching",
+          "ok": true,
+          "latency_s": 0.274377099936828,
+          "source": "fallback"
+        },
+        {
+          "text": "What's my running cost per km and resale value?",
+          "expected": "get_cost_and_resale",
+          "got": "get_cost_and_resale",
+          "ok": true,
+          "latency_s": 0.09213080001063645,
+          "source": "fallback"
+        },
+        {
+          "text": "Which fleet cars should I move?",
+          "expected": "get_fleet_status",
+          "got": "get_fleet_status",
+          "ok": true,
+          "latency_s": 0.8301234999671578,
+          "source": "fallback"
+        },
+        {
+          "text": "Take me home without charging",
+          "expected": "navigate_to",
+          "got": "navigate_to",
+          "ok": true,
+          "latency_s": 0.16772909997962415,
+          "source": "fallback"
+        },
+        {
+          "text": "Also stop at a McDonald's on the way",
+          "expected": "add_stop",
+          "got": "add_stop",
+          "ok": true,
+          "latency_s": 0.14102600002661347,
+          "source": "fallback"
+        },
+        {
+          "text": "Cancel the navigation",
+          "expected": "cancel_navigation",
+          "got": "cancel_navigation",
+          "ok": true,
+          "latency_s": 0.0002389999572187662,
+          "source": "fallback"
+        },
+        {
+          "text": "yes",
+          "expected": "navigate_to",
+          "got": "navigate_to",
+          "ok": true,
+          "latency_s": 2.7211655999999493,
+          "source": "fallback"
+        }
+      ]
+    },
+    "llm": {
+      "prompts": 17,
+      "success_pct": 100.0,
+      "median_latency_s": 3.5984803000465035,
+      "p95_latency_s": 6.309049800038334,
+      "failures": [],
+      "rows": [
+        {
+          "text": "Will I make it to Mysore without stopping?",
+          "expected": "check_range_to",
+          "got": "check_range_to",
+          "ok": true,
+          "latency_s": 5.429051200044341,
+          "source": "llm"
+        },
+        {
+          "text": "Take me to Mysuru",
+          "expected": "navigate_to",
+          "got": "navigate_to",
+          "ok": true,
+          "latency_s": 5.371321800048463,
+          "source": "llm"
+        },
+        {
+          "text": "Take me to the nearest McDonald's",
+          "expected": "navigate_to",
+          "got": "navigate_to",
+          "ok": true,
+          "latency_s": 3.3330457999836653,
+          "source": "llm"
+        },
+        {
+          "text": "Why is my range lower than usual?",
+          "expected": "explain_range",
+          "got": "explain_range",
+          "ok": true,
+          "latency_s": 3.437313799979165,
+          "source": "llm"
+        },
+        {
+          "text": "How much charge do I have left?",
+          "expected": "get_battery_status",
+          "got": "get_battery_status",
+          "ok": true,
+          "latency_s": 2.9564877999946475,
+          "source": "llm"
+        },
+        {
+          "text": "Find me a fast charger nearby",
+          "expected": "list_chargers",
+          "got": "list_chargers",
+          "ok": true,
+          "latency_s": 4.260033499915153,
+          "source": "llm"
+        },
+        {
+          "text": "Turn off the AC",
+          "expected": "set_climate",
+          "got": "set_climate",
+          "ok": true,
+          "latency_s": 2.7120312000624835,
+          "source": "llm"
+        },
+        {
+          "text": "Pre-cool the cabin for 15 minutes",
+          "expected": "precool_cabin",
+          "got": "precool_cabin",
+          "ok": true,
+          "latency_s": 3.357298000017181,
+          "source": "llm"
+        },
+        {
+          "text": "Show the left turn camera",
+          "expected": "assisted_driving",
+          "got": "assisted_driving",
+          "ok": true,
+          "latency_s": 3.5984803000465035,
+          "source": "llm"
+        },
+        {
+          "text": "How are my charging habits?",
+          "expected": "get_charging_coaching",
+          "got": "get_charging_coaching",
+          "ok": true,
+          "latency_s": 3.698988499934785,
+          "source": "llm"
+        },
+        {
+          "text": "Am I braking too hard?",
+          "expected": "get_eco_driving_coaching",
+          "got": "get_eco_driving_coaching",
+          "ok": true,
+          "latency_s": 3.2367566999746487,
+          "source": "llm"
+        },
+        {
+          "text": "What's my running cost per km and resale value?",
+          "expected": "get_cost_and_resale",
+          "got": "get_cost_and_resale",
+          "ok": true,
+          "latency_s": 3.981845899950713,
+          "source": "llm"
+        },
+        {
+          "text": "Which fleet cars should I move?",
+          "expected": "get_fleet_status",
+          "got": "get_fleet_status",
+          "ok": true,
+          "latency_s": 3.9976005000062287,
+          "source": "llm"
+        },
+        {
+          "text": "Take me home without charging",
+          "expected": "navigate_to",
+          "got": "navigate_to",
+          "ok": true,
+          "latency_s": 3.441173500032164,
+          "source": "llm"
+        },
+        {
+          "text": "Also stop at a McDonald's on the way",
+          "expected": "add_stop",
+          "got": "add_stop",
+          "ok": true,
+          "latency_s": 3.6701523000374436,
+          "source": "llm"
+        },
+        {
+          "text": "Cancel the navigation",
+          "expected": "cancel_navigation",
+          "got": "cancel_navigation",
+          "ok": true,
+          "latency_s": 2.830722099984996,
+          "source": "llm"
+        },
+        {
+          "text": "yes",
+          "expected": "navigate_to",
+          "got": "navigate_to",
+          "ok": true,
+          "latency_s": 9.829044200014323,
+          "source": "llm"
+        }
+      ]
+    }
+  },
+  "voice": {
+    "tts_s": 1.3770437999628484,
+    "stt_s": 0.5183209999231622,
+    "stt_device": "cuda",
+    "heard": "Will I make it to Mysore without stopping?",
+    "audio_s": 2.14
+  }
+}
