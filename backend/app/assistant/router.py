@@ -13,7 +13,7 @@ import inspect
 from app import simulation
 from app.assistant.stubs import assisted_driving, precooling
 from app.battery_core import guard
-from app.config import COMFORT_SOC, RESERVE_SOC
+from app.config import COMFORT_SOC, HARD_MIN_SOC, RESERVE_SOC
 from app.routing import replanner
 
 
@@ -97,13 +97,35 @@ class ToolRouter:
             return (f"{prefix}Routing to {dest} with {'a charging stop' if n == 1 else f'{n} charging stops'} at "
                     f"{stops}. Total {_mins(t['total_min'])}, arriving with {_pct(t['arrival_soc'])}.")
         s = f"{prefix}Navigating to {dest}: {t['distance_km']:.0f} km, {_mins(t['total_min'])}, arriving with {_pct(t['arrival_soc'])}."
-        if decision.status == "ok_low_margin":
+        if decision.status == "ok_below_reserve":
+            s = f"{prefix}Navigating to {dest} without charging: {t['distance_km']:.0f} km, {_mins(t['total_min'])}. "
+            if t["arrival_soc"] < HARD_MIN_SOC:
+                s += (f"Warning: you'll arrive with only {_pct(t['arrival_soc'])}, almost empty - traffic or AC "
+                      f"could leave you stranded. Drive very gently.")
+            else:
+                s += (f"Warning: you'll arrive with only {_pct(t['arrival_soc'])}, below the {_pct(RESERVE_SOC)} "
+                      f"reserve. Drive gently and go easy on the AC.")
+        elif decision.status == "ok_low_margin":
             s += " That's a thin margin, so drive gently."
         return s
 
     # -- navigation ------------------------------------------------------------
-    def t_navigate_to(self, destination: str = "", via_charger: bool = False):
-        args = {"destination": destination, "via_charger": via_charger}
+    def t_navigate_to(self, destination: str = "", via_charger: bool = False, no_charging: bool = False,
+                      stop_at: str = ""):
+        nav = self._navigate(destination, via_charger, no_charging)
+        if not stop_at or not nav["ok"] or not self.st.active_plan:
+            return nav
+        # "Take me to X with a stop at Y": route to X, then slot Y in along the way
+        self.st.pending_offer = None
+        stop = self.t_add_stop(stop_at)
+        args = {**nav["args"], "stop_at": stop_at}
+        if not stop["ok"]:
+            return {**nav, "args": args, "say": f"{nav['say']} {stop['say']}",
+                    "facts": {**nav["facts"], "stop_not_added": stop["say"]}}
+        return {**stop, "tool": "navigate_to", "args": args, "route_changed": True}
+
+    def _navigate(self, destination: str, via_charger: bool, no_charging: bool):
+        args = {"destination": destination, "via_charger": via_charger, "no_charging": no_charging}
         target = self._resolve(destination)
         if not target:
             return result("navigate_to", args, False,
@@ -113,13 +135,23 @@ class ToolRouter:
                           {"destination": target["name"], "distance_km": 0})
 
         cond = self._cond()
+        if not via_charger:
+            # Go where the driver asked. A charging stop is only forced in when skipping it would
+            # leave the car below the hard floor (or out of charge, if they insisted on no charging).
+            out = self._navigate_direct(target, args, cond, explicit=no_charging)
+            if out:
+                return out
+
         min_final = COMFORT_SOC if via_charger else RESERVE_SOC
         old = self.st.active_plan
-        if old:
-            plan, diff = replanner.replan_destination(self.ctx.planner, self.st, cond, target["node"])
-        else:
-            plan = self.ctx.planner.plan(self.st.location, [target["node"]], self.st.soc, cond, min_final)
-            diff = None
+        plan = self.ctx.planner.plan(self.st.location, [target["node"]], self.st.soc, cond, min_final)
+        forced = False
+        if via_charger and plan["status"] == "direct":
+            # The battery would manage, but the driver asked to charge on the way - honour that
+            via = self.ctx.planner.plan_via_charger(self.st.location, target["node"], self.st.soc, cond)
+            if via:
+                plan, forced = via, True
+        diff = replanner.diff(old, plan)
         if target["kind"] != "node":
             plan["destination_names"][-1] = target["name"]
         decision = guard.assess_plan(plan)
@@ -131,15 +163,66 @@ class ToolRouter:
             return result("navigate_to", args, False, self._route_say(plan, decision),
                           self._plan_facts(plan, decision), decision)
 
-        note = self.ctx.planner.alternative_note(self.st.location, plan["destinations"], self.st.soc, cond, plan)
+        note = None if forced else self.ctx.planner.alternative_note(
+            self.st.location, plan["destinations"], self.st.soc, cond, plan)
         self._activate(plan)
         facts = self._plan_facts(plan, decision, note)
         prefix = "Changing destination. " if old else ""
         if diff:
             facts["change"] = diff
-        if via_charger and not plan["stops"]:
-            facts["note"] = "No charging stop needed - battery is sufficient."
+        if forced:
+            facts["note"] = "Charging stop added because the driver asked for one; the battery alone would also make it."
+        elif via_charger and not plan["stops"]:
+            facts["note"] = "No charger on the way could be found - going direct."
         return result("navigate_to", args, True, self._route_say(plan, decision, prefix), facts, decision, True)
+
+    def _navigate_direct(self, target, args, cond, explicit):
+        """Route with no charging stop. Returns None to let the caller plan one with charging instead."""
+        old = self.st.active_plan
+        try:
+            if old:
+                plan, diff = replanner.replan_destination(self.ctx.planner, self.st, cond, target["node"], direct=True)
+            else:
+                plan, diff = self.ctx.planner.plan_direct(self.st.location, [target["node"]], self.st.soc, cond), None
+        except ValueError:   # no road path - the normal planner reports it
+            return None
+        if target["kind"] != "node":
+            plan["destination_names"][-1] = target["name"]
+        dest = plan["destination_names"][-1]
+        decision = guard.assess_direct(plan, explicit)
+
+        if not decision.allow:
+            if not explicit:
+                return None
+            say = (f"I can't skip charging: {dest} is {plan['totals']['distance_km']:.0f} km away and you'd run out "
+                   f"of charge before getting there.")
+            charged = self.ctx.planner.plan(self.st.location, [target["node"]], self.st.soc, cond)
+            if charged["stops"]:
+                stop = charged["stops"][0]
+                say += f" A {stop['charge_min']:.0f}-minute stop at {stop['name']} fixes it. Want that route?"
+                self.st.pending_offer = {"text": f"Navigate to {dest} via {stop['name']}?",
+                                         "tool": "navigate_to", "args": {"destination": target["node"]}}
+            elif charged.get("reachable_chargers"):
+                alt = charged["reachable_chargers"][0]
+                say += f" The closest charger you can reach is {alt['name']}, {alt['distance_km']} km away. Head there first?"
+                self.st.pending_offer = {"text": f"Navigate to {alt['name']} to charge?",
+                                         "tool": "navigate_to", "args": {"destination": alt["node"]}}
+            return result("navigate_to", args, False, say, self._plan_facts(plan, decision), decision)
+
+        # The driver accepted a low arrival; don't nag about the reserve unless things get worse than planned
+        plan["accepted_arrival_soc"] = plan["totals"]["arrival_soc"] if decision.status == "ok_below_reserve" else None
+        self._activate(plan)
+        facts = self._plan_facts(plan, decision)
+        if diff:
+            facts["change"] = diff
+        say = self._route_say(plan, decision, "Changing destination. " if old else "")
+        if decision.status == "ok_below_reserve":
+            facts["warning"] = " ".join(decision.reasons)
+            facts["charging_stop_offered"] = True
+            say += " Say yes if you'd like a charging stop added."
+            self.st.pending_offer = {"text": f"Add a charging stop on the way to {dest}?", "tool": "navigate_to",
+                                     "args": {"destination": target["node"], "via_charger": True}}
+        return result("navigate_to", args, True, say, facts, decision, True)
 
     def t_check_range_to(self, destination: str = "", without_stopping: bool = True):
         args = {"destination": destination}
@@ -188,8 +271,8 @@ class ToolRouter:
             facts["suggested_stop"] = {"name": st["name"], "minutes": round(st["charge_min"]),
                                        "charge_to": _pct(st["depart_soc"])}
             say += f" One {st['charge_min']:.0f}-minute stop at {st['name']} fixes it. Want me to start that route?"
-            self.st.pending_offer = {"text": f"Navigate to {name} via {st['name']}?",
-                                     "tool": "navigate_to", "args": {"destination": target["node"]}}
+            self.st.pending_offer = {"text": f"Navigate to {name} via {st['name']}?", "tool": "navigate_to",
+                                     "args": {"destination": target["node"], "via_charger": True}}
         return result("check_range_to", args, True, say, facts, decision)
 
     def t_add_stop(self, place: str = ""):
@@ -319,7 +402,9 @@ class ToolRouter:
         out = assisted_driving.trigger(action, side)
         self.st.log("stub", out["would_do"], stub="assisted_driving")
         return result("assisted_driving", {"action": action, "side": side}, True,
-                      out["would_do"].replace("Would ", "OK - I'd ").rstrip(".") + " (driver-assist is simulated).", out)
+                      out["would_do"].replace("Would show", "Showing").replace("Would open", "Opening")
+                      .replace("Would engage", "Engaging").replace("Would switch", "Switching")
+                      .replace("Would enable", "Enabling"), out)
 
     # -- offers ------------------------------------------------------------------
     def t_respond_to_offer(self, accept: bool = True):

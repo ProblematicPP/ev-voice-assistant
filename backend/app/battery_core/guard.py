@@ -56,6 +56,26 @@ def assess_plan(plan: dict) -> GuardDecision:
     return GuardDecision(True, "ok", reasons)
 
 
+def assess_direct(plan: dict, explicit: bool) -> GuardDecision:
+    """A route without charging stops. Below the reserve it still goes ahead, with a warning -
+    the driver decides. `explicit` = the driver asked to skip charging; then we go as low as
+    actually reaching the destination, otherwise only down to the hard floor."""
+    arr = min(l["soc_arrive"] for l in plan["legs"])
+    dest = plan["destination_names"][-1]
+    if arr <= 0:
+        return GuardDecision(False, "would_run_out", [f"Not enough charge to reach {dest} without charging."])
+    if not explicit and arr < HARD_MIN_SOC:
+        return GuardDecision(False, "below_hard_min", [f"Would reach {dest} with only {pct(arr)}."])
+    if arr < RESERVE_SOC:
+        return GuardDecision(True, "ok_below_reserve",
+                             [f"Arrive with only {pct(arr)}, below the {pct(RESERVE_SOC)} reserve.",
+                              "Very little margin for traffic, AC or detours - drive gently."])
+    if arr < COMFORT_SOC:
+        return GuardDecision(True, "ok_low_margin", [f"Arrive with {pct(arr)}.",
+                             f"That's below the {pct(COMFORT_SOC)} comfort margin - drive gently."])
+    return GuardDecision(True, "ok", [f"Arrive with {pct(arr)}."])
+
+
 def assess_climate_change(range_before_km: float, range_after_km: float, soc: float) -> GuardDecision:
     loss = range_before_km - range_after_km
     reasons = [f"Range {range_before_km:.0f} → {range_after_km:.0f} km ({-loss:+.0f} km)."]

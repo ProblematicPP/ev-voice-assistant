@@ -199,6 +199,68 @@ class RoutePlanner:
             cur, cur_soc = dest, leg["legs"][-1]["soc_arrive"]
         return self._summarize(origin, destinations, soc, all_legs, all_stops)
 
+    def plan_via_charger(self, origin: int, dest: int, soc: float, cond: dict,
+                         target: float = DC_TARGET_SOC) -> dict | None:
+        """The driver asked to charge on the way even though the battery doesn't strictly need it:
+        pick the corridor charger with the smallest total time (detour + charging to `target`)."""
+        net, usable = self.net, self.battery.usable_kwh()
+        energy = self.battery.edge_energy_kwh(net, cond)
+        dist_o, pred_o = net.tree(origin)
+        best = None
+        for ch in self._corridor(origin, dest, frozenset()):
+            if ch["kind"] == "home_ac" or ch["node"] in (origin, dest) or not np.isfinite(dist_o[ch["node"]]):
+                continue
+            a = self._walk(origin, ch["node"], pred_o, energy)
+            arr = soc - a["energy_kwh"] / usable
+            if arr < HARD_MIN_SOC:
+                continue
+            dist_c, pred_c = net.tree(ch["node"])
+            if not np.isfinite(dist_c[dest]):
+                continue
+            b = self._walk(ch["node"], dest, pred_c, energy)
+            dep = max(target, round(arr + 0.05, 3))
+            kw = self._effective_kw(ch)
+            cmin = charge_minutes(arr, dep, kw, usable) + STOP_OVERHEAD_MIN
+            total = a["drive_min"] + cmin + b["drive_min"]
+            if best is None or total < best[0]:
+                best = (total, ch, a, b, arr, dep, kw)
+        if best is None:
+            return None
+        _, ch, a, b, arr, dep, kw = best
+        leg = lambda frm, to, prof, s0, s1, at_charger: {
+            "from": frm, "to": to, "to_name": net.name(to), "path": prof["nodes"],
+            "distance_km": round(prof["distance_km"], 1), "drive_min": round(prof["drive_min"], 1),
+            "energy_kwh": round(prof["energy_kwh"], 2), "soc_depart": round(s0, 3), "soc_arrive": round(s1, 3),
+            "ends_at_charger": at_charger, "waypoint_index": 0}
+        legs = [leg(origin, ch["node"], a, soc, arr, True),
+                leg(ch["node"], dest, b, dep, dep - b["energy_kwh"] / usable, False)]
+        kwh = (dep - arr) * usable / CHARGE_EFF
+        stop = {"charger_id": ch["id"], "name": ch["name"], "node": ch["node"], "lat": ch["lat"], "lon": ch["lon"],
+                "power_kw": kw, "price_per_kwh": ch["price_per_kwh"],
+                "synthetic_fields": ch.get("synthetic_fields", []),
+                "arrive_soc": round(arr, 3), "depart_soc": dep, "charge_kwh": round(kwh, 2),
+                "charge_min": round(charge_minutes(arr, dep, kw, usable) + STOP_OVERHEAD_MIN, 1),
+                "cost_inr": round(kwh * ch["price_per_kwh"], 0)}
+        return self._summarize(origin, [dest], soc, legs, [stop])
+
+    def plan_direct(self, origin: int, destinations: list[int], soc: float, cond: dict) -> dict:
+        """Shortest road route with no charging stops, whatever the arrival charge (the guard judges it)."""
+        usable = self.battery.usable_kwh()
+        energy = self.battery.edge_energy_kwh(self.net, cond)
+        legs, cur, cur_soc = [], origin, soc
+        for i, dest in enumerate(destinations):
+            prof = self.path_profile(cur, dest, energy)
+            arr = cur_soc - prof["energy_kwh"] / usable
+            legs.append({
+                "from": cur, "to": dest, "to_name": self.net.name(dest), "path": prof["nodes"],
+                "distance_km": round(prof["distance_km"], 1), "drive_min": round(prof["drive_min"], 1),
+                "energy_kwh": round(prof["energy_kwh"], 2),
+                "soc_depart": round(cur_soc, 3), "soc_arrive": round(arr, 3),
+                "ends_at_charger": False, "waypoint_index": i,
+            })
+            cur, cur_soc = dest, arr
+        return self._summarize(origin, destinations, soc, legs, [])
+
     def _summarize(self, origin, destinations, soc, legs, stops) -> dict:
         drive = sum(l["drive_min"] for l in legs)
         charge = sum(s["charge_min"] for s in stops)
@@ -211,6 +273,7 @@ class RoutePlanner:
             "origin_name": self.net.name(origin),
             "destinations": destinations,
             "destination_names": [self.net.name(d) for d in destinations],
+            "destination_coords": [list(self.net.coords(d)) for d in destinations],
             "legs": legs,
             "stops": stops,
             "route_nodes": route_nodes,

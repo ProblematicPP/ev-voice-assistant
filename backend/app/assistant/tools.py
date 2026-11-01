@@ -22,10 +22,14 @@ B = {"type": "boolean"}
 TOOLS = [
     _fn("navigate_to",
         "Start navigation to a place, brand or category (e.g. 'Mysuru', 'nearest McDonald's', 'airport', "
-        "'home', 'nearest charger'). Automatically checks battery range and adds charging stops. "
-        "Also use this to CHANGE the destination during a drive.",
+        "'home', 'nearest charger'). Goes straight there when the battery allows (warning if the margin is "
+        "thin) and only adds a charging stop when really needed. Also use this to CHANGE the destination during a drive.",
         {"destination": {**S, "description": "Place name or POI as the user said it"},
-         "via_charger": {**B, "description": "True if the user explicitly wants to charge on the way"}},
+         "via_charger": {**B, "description": "True if the user explicitly wants to charge on the way"},
+         "no_charging": {**B, "description": "True if the user says to go without a charging stop / don't stop "
+                                             "to charge / direct route"},
+         "stop_at": {**S, "description": "A place to stop at on the way, if the user asked for one "
+                                         "(e.g. 'take me to the office with a stop at McDonald's' -> 'McDonald's')"}},
         ["destination"]),
     _fn("check_range_to",
         "Answer 'will I make it to X', 'can I reach X without stopping', 'enough charge for X'. "

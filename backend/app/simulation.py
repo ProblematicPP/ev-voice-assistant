@@ -139,6 +139,9 @@ def remaining_projection(ctx) -> dict | None:
         min_soc = min(min_soc, soc)
         # Arriving at a planned charger only needs the hard floor; the destination needs the reserve
         floor = HARD_MIN_SOC if leg.get("ends_at_charger") else RESERVE_SOC
+        if plan.get("accepted_arrival_soc") is not None and not leg.get("ends_at_charger"):
+            # Driver chose to skip charging: only flag it if things get clearly worse than they agreed to
+            floor = min(floor, plan["accepted_arrival_soc"] - 0.02)
         at_risk = at_risk or soc < floor - 0.005
         if leg.get("ends_at_charger"):
             stop = next(s for s in plan["stops"] if s["node"] == leg["to"])

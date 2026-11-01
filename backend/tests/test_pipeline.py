@@ -60,3 +60,15 @@ def test_hallucinated_arguments_are_dropped():
         {"function": {"name": "set_climate", "arguments": {"mode": "off", "fan_speed": 3}}}]})
     out = run(pipe, "turn off the ac")
     assert out["tool_calls"][0]["ok"] and ctx.state.hvac_mode == "off"
+
+
+def test_navigate_with_stop_on_the_way():
+    ctx = AppContext()
+    pipe = AssistantPipeline(ctx)
+    pipe.llm = FakeLLM({"role": "assistant", "content": "", "tool_calls": [
+        {"function": {"name": "navigate_to", "arguments": {"destination": "office", "stop_at": "McDonald's"}}}]})
+    out = run(pipe, "take me to office with a stop at mcdonalds on the way")
+    plan = ctx.state.active_plan
+    assert out["tool_calls"][0]["ok"]
+    assert len(plan["destinations"]) == 2 and "McDonald" in plan["destination_names"][0]
+    assert len(plan["destination_coords"]) == 2      # the map draws a marker for the stop

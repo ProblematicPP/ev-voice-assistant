@@ -38,28 +38,34 @@ Step 5. Check everything is ready (optional)
      "llm": ... "available": true
      "stt": ... "loaded": true, "device": "cuda"
      "tts": ... "loaded": true
-   The app header also shows "LLM qwen3.5:4b" when the AI is connected.
+   The Simulator panel (right of the phone) also shows "LLM (qwen3.5:4b)"
+   under System when the AI is connected.
 
 
 USING IT
 --------
-   - The right side has four tabs: Trip (real map + route), Battery, Ownership
-     and Simulator (demo controls). The app jumps to Trip when a route is made.
+   - The app is shown as a phone. Its bottom bar has Home, Navigate (real map +
+     route), Volt (the assistant chat, centre button), Battery and Insights.
+     The app opens Navigate when a route is made. Volt's replies pop up as a
+     notification on the other screens; tap it to open the chat.
+   - The Simulator panel to the right of the phone holds the demo controls and
+     system status. It is not part of the app. On a narrow window it sits
+     below the phone.
      The map background needs internet; routing itself works offline.
    - Type in the box, or click the mic, speak, and click the mic again to send.
      Allow microphone access the first time.
    - Click anywhere on the page once so the browser allows spoken replies.
-     The "Voice replies on/off" button (top of the chat) mutes the voice.
-   - The Simulator tab changes the simulated car: charge, temperature, AC,
+     The speaker button at the top of the Volt screen mutes the voice.
+   - The Simulator panel changes the simulated car: charge, temperature, AC,
      location, drive forward, and one-click scenarios.
 
    Demo script (in this order):
      1. "Will I make it to Mysore without stopping?"   -> says no, offers a stop
      2. "Yes"                                         -> route with auto-picked charger
-     3. Simulator tab: +30 km                         -> car drives along the route
+     3. Simulator: +30 km                             -> car drives along the route
      4. "I'm hungry, find me a McDonald's on the way" -> mid-drive re-plan
      5. "Why is my range lower than usual?"           -> range-drop explanation
-     6. Simulator tab: "Low battery, far from home"   -> proactive nudge, say "yes"
+     6. Simulator: "Low battery, far from home"       -> proactive nudge, say "yes"
      7. Scenario "Hot day, plugged in", then "yes"    -> pre-cooling (simulated)
      8. "Show the left turn camera"                   -> driver assist (simulated)
      9. "How are my charging habits?"                 -> companion coaching
@@ -75,11 +81,11 @@ STOPPING IT
 
 TROUBLESHOOTING
 ---------------
-   "Connecting to the backend..." never goes away
+   "Connecting to your car..." never goes away
        -> Terminal 1 isn't running or crashed. Start Step 2 again.
 
-   Header says "LLM offline, rule-based mode"
-       -> Ollama isn't running (Step 1). The app still works with simpler
+   Simulator panel says "Rule-based parser (Ollama offline)"
+       -> (Simulator panel, System) Ollama isn't running (Step 1). The app still works with simpler
           keyword understanding. It reconnects within ~20 s of Ollama starting.
 
    First reply is very slow (a minute or more)
@@ -97,7 +103,7 @@ TROUBLESHOOTING
           the address bar), then reload.
 
    No spoken replies
-       -> Click once anywhere on the page, and check "Voice replies on".
+       -> Click once anywhere on the page, and check the speaker button at the top of the Volt screen.
 
    Run the automated tests (optional)
        cd "C:\Users\ansh2\Desktop\final year project\backend"

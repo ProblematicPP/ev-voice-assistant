@@ -21,7 +21,7 @@ def replan_with_stop(planner: RoutePlanner, state, cond: dict, stop_node: str) -
     if old and remaining:   # keep the friendly names (e.g. "McDonald's, Indiranagar") of existing stops
         names = remaining_names(state)
         new["destination_names"] = names[:-1] + [new["destination_names"][len(names) - 1]] + names[-1:]
-    return new, _diff(old, new)
+    return new, diff(old, new)
 
 
 def remaining_names(state) -> list[str]:
@@ -29,13 +29,17 @@ def remaining_names(state) -> list[str]:
     return state.active_plan["destination_names"][done:]
 
 
-def replan_destination(planner: RoutePlanner, state, cond: dict, dest_node: str) -> tuple[dict, dict | None]:
+def replan_destination(planner: RoutePlanner, state, cond: dict, dest_node: str,
+                       direct: bool = False) -> tuple[dict, dict | None]:
     old = state.active_plan
-    new = planner.plan(state.location, [dest_node], state.soc, cond)
-    return new, _diff(old, new)
+    if direct:
+        new = planner.plan_direct(state.location, [dest_node], state.soc, cond)
+    else:
+        new = planner.plan(state.location, [dest_node], state.soc, cond)
+    return new, diff(old, new)
 
 
-def _diff(old: dict | None, new: dict) -> dict | None:
+def diff(old: dict | None, new: dict) -> dict | None:
     if not old or new["status"] == "infeasible" or "total_min" not in old.get("totals", {}):
         return None
     old_stops = {s["charger_id"] for s in old["stops"]}

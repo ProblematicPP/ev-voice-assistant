@@ -60,5 +60,5 @@ def estimate(profile: dict, soh: float, recent_fast_share: float) -> dict:
         "projection_years": yrs,
         "projections": scenarios,
         "habit_value_gap_inr": round(scenarios[0]["value_inr"] - scenarios[1]["value_inr"], -3),
-        "disclaimer": "Synthetic estimate for demonstration - not a market valuation.",
+        "disclaimer": "Estimate based on battery health, age and distance driven. Actual offers vary.",
     }

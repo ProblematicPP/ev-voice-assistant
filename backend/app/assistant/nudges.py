@@ -31,7 +31,7 @@ def _rules(ctx):
             f"{proj['destination']} at {max(proj['arrival_soc'], 0):.0%} (lowest point {max(proj['min_soc'], 0):.0%}) - "
             f"below the safe reserve. "
             f"Re-plan with a charging stop?",
-            {"tool": "navigate_to", "args": {"destination": st.active_plan["destinations"][-1]},
+            {"tool": "navigate_to", "args": {"destination": st.active_plan["destinations"][-1], "via_charger": True},
              "text": f"Re-plan to {proj['destination']} with a charging stop"},
         ))
 

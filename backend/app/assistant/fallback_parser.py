@@ -10,13 +10,21 @@ import re
 
 YES = re.compile(r"^\s*(yes|yeah|yep|yup|sure|ok|okay|do it|go ahead|please do|sounds good|alright|haan|ha)\b", re.I)
 NO = re.compile(r"^\s*(no|nope|nah|not now|don'?t|cancel that|skip)\b", re.I)
+# "take me home without charging", "... don't stop to charge", "skip the charger", "direct route"
+NO_CHARGE = re.compile(r"\b(without (a |any )?(charg\w*|stopping|stops?)|(no|skip( the)?|avoid( the)?) "
+                       r"(charg\w*|stops?)|(do not|don'?t) (stop|charge)\w*( to charge)?|direct(ly)?( route)?|"
+                       r"straight)\b.*$", re.I)
+# "take me to the office with a stop at McDonald's on the way", "... and stop at a cafe"
+STOP_AT = re.compile(r"[,\s]*\b(with an? (quick )?stop|and (also )?stop|stopping|with a detour)\s+((at|by|to|for)\s+)?"
+                     r"(?P<place>.+?)(\s+(on the way|en route|along the way))?[?.!]*$", re.I)
 
 
 def _after(text: str, *keys: str) -> str:
     for k in keys:
         m = re.search(rf"\b{k}\b\s+(.*)", text, re.I)
         if m:
-            place = m.group(1)
+            place = NO_CHARGE.sub("", m.group(1)).strip()
+            place = re.sub(r"\s+(and|but)\s*$", "", place)
             place = re.sub(r"\b(without (stopping|a stop|charging)|on the way|please|now|first|right now|"
                            r"on (one|this|a single) charge|and back|today)\b.*$", "", place, flags=re.I)
             place = re.sub(r"[?.!,]+$", "", place).strip()
@@ -66,14 +74,23 @@ def parse(text: str, has_pending_offer: bool = False, driving: bool = False):
         pct = re.search(r"(\d{2,3})\s*%?", t)
         return "start_charging", {"target_percent": int(pct.group(1)) if pct else 80}
 
-    if driving and re.search(r"\b(add|also|detour|stop at|stop by|on the way|via|pit ?stop|quick stop)\b", t):
+    navigate = re.search(r"\b(take me|navigate|go to|drive (me )?to|directions|route (me )?to|head to|"
+                         r"(go|head) home|let'?s go)\b", t)
+    stop = STOP_AT.search(t) if navigate else None
+
+    if driving and not stop and re.search(r"\b(add|also|detour|stop at|stop by|on the way|via|pit ?stop|quick stop)\b", t):
         return "add_stop", {"place": _after(t, "stop at", "stop by", "at", "to", "a", "add") or t}
 
-    if re.search(r"\b(take me|navigate|go to|drive (me )?to|directions|route (me )?to|head to|let'?s go)\b", t):
-        dest = _after(t, "take me to", "take me", "navigate to", "go to", "drive me to", "drive to",
+    if navigate:
+        main = t[:stop.start()] if stop else t
+        dest = _after(main, "take me to", "take me", "navigate to", "go to", "drive me to", "drive to",
                       "directions to", "route me to", "route to", "head to", "go")
-        via = bool(re.search(r"via (a )?charg|charge on the way|with a charg", t))
-        return "navigate_to", {"destination": dest, "via_charger": via}
+        direct = bool(NO_CHARGE.search(t))
+        via = not direct and bool(re.search(r"via (a )?charg|charge on the way|with a charg", t))
+        args = {"destination": dest, "via_charger": via, "no_charging": direct}
+        if stop:
+            args["stop_at"] = re.sub(r"[?.!,]+$", "", NO_CHARGE.sub("", stop.group("place"))).strip()
+        return "navigate_to", args
 
     if re.search(r"\b(charger|charging station|charge point)s?\b", t):
         return "list_chargers", {"fast_only": "fast" in t}

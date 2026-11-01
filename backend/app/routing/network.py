@@ -66,6 +66,9 @@ class RoadNetwork:
         for p in data["places"]:
             self.place_at.setdefault(p["node"], p)
         self.chargers = {c["id"]: c for c in data["chargers"]}
+        demo = path.with_name("demo_chargers.json")   # extra chargers for demos (data_gen.gen_demo_chargers)
+        if demo.exists():
+            self.chargers.update({c["id"]: c for c in json.loads(demo.read_text(encoding="utf-8"))})
         self.pois = data["pois"]
         self._k = math.cos(math.radians(14.5))
         self._place_list = list(self.places.values())
