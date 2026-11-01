@@ -21,7 +21,7 @@ export default function SimControls({ state, network }) {
   const timer = useRef(null);
 
   // Forget local edits once the server state reflects them
-  useEffect(() => setDraft({}), [v.soc, v.ambient_temp_c, v.driving_style, v.payload_kg]);
+  useEffect(() => setDraft({}), [v.soc, v.ambient_temp_c, v.driving_style, v.payload_kg, v.charging_habit]);
 
   const call = async (path, body) => {
     setError("");
@@ -32,7 +32,7 @@ export default function SimControls({ state, network }) {
     clearTimeout(timer.current);
     timer.current = setTimeout(() => call("/sim/update", patch), debounce);
   };
-  const val = (k) => draft[k] ?? v[k];
+  const val = (k) => draft[k] ?? v[k] ?? (k === "charging_habit" ? state.battery.charging_habit : undefined);
   const places = Object.fromEntries((network?.places ?? []).map((p) => [p.id, p]));
   const placeNode = (id) => places[id]?.node;
 
@@ -69,6 +69,12 @@ export default function SimControls({ state, network }) {
           <span>Load <span className="val">{Math.round(val("payload_kg"))} kg</span></span>
           <input type="range" min="0" max="400" step="25" value={val("payload_kg")}
             onChange={(e) => update({ payload_kg: +e.target.value }, 350)} />
+        </label>
+        <label className="field">
+          <span title="Share of charging sessions on DC fast chargers; drives remaining life and the 2-year projection">
+            Charging habit <span className="val">{Math.round(val("charging_habit") * 100)}% fast</span></span>
+          <input type="range" min="0" max="1" step="0.05" value={val("charging_habit")}
+            onChange={(e) => update({ charging_habit: +e.target.value }, 350)} />
         </label>
         <label className="field">
           <span>Climate</span>

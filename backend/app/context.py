@@ -77,6 +77,10 @@ class AppContext:
         recent = (self.state.telemetry or {}).get("drive")
         return eco.coach(self.battery, self.state, self.telemetry_history(), recent)
 
+    def fast_share(self) -> float:
+        """Charging habit used for projections: the simulator's setting, else the last 30 days."""
+        return self.state.charging_habit if self.state.charging_habit is not None else self.recent_fast_share()
+
     # -- companion app ----------------------------------------------------------
     def companion(self) -> dict:
         soh = self.battery.soh()
@@ -87,7 +91,7 @@ class AppContext:
             "coaching": coaching.coach(sessions),
             "charging_summary": coaching.summary(sessions),
             "cost": cost.cost_per_km(sessions, self.trips),
-            "resale": resale.estimate(self.battery, self.recent_fast_share()),
+            "resale": resale.estimate(self.battery, self.fast_share()),
             "eco": self.eco(),
         }
 
@@ -99,7 +103,8 @@ class AppContext:
             "vehicle": {**st.public(), "location_name": self.net.name(st.location),
                         "home_node": self.home_node, "name": VEHICLE["name"],
                         "lat": self.net.coords(st.location)[0], "lon": self.net.coords(st.location)[1]},
-            "battery": self.battery.soh(),
+            "battery": {**self.battery.soh(), "rul": self.battery.rul(self.fast_share()),
+                        "charging_habit": round(self.fast_share(), 2)},
             "range": self.battery.range(st),
             "route": st.active_plan,
             "route_projection": simulation.remaining_projection(self),

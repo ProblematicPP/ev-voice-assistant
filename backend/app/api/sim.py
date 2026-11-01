@@ -17,6 +17,7 @@ class Update(BaseModel):
     driving_style: float | None = Field(None, ge=0, le=1)
     location: str | int | None = None   # place id or road node id
     plugged_in: bool | None = None
+    charging_habit: float | None = Field(None, ge=0, le=1)   # share of sessions on DC fast chargers
 
 
 class Drive(BaseModel):

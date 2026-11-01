@@ -36,7 +36,7 @@ def estimate(core, recent_fast_share: float) -> dict:
     yrs = 2.0
     odo_future = odo + 12_000 * yrs
     scenarios = []
-    for label, share in [("Mostly slow charging", 0.05), ("Current habits", recent_fast_share),
+    for label, share in [("Mostly slow charging", 0.05), ("Your current habit", recent_fast_share),
                          ("Fast charging most days", 0.60)]:
         s = core.project_soh(yrs, share)
         scenarios.append({"label": label, "fast_charge_share": round(share, 2), "soh": round(s, 4),

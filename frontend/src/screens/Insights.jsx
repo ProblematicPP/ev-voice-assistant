@@ -6,7 +6,7 @@ export default function Insights({ companion }) {
   if (!companion) {
     return (
       <div className="scroll">
-        <header className="app-bar"><div><h1>Insights</h1></div></header>
+        <header className="app-bar"><div><h1>Ownership</h1></div></header>
         <p className="muted pad">Loading your driving and charging history…</p>
       </div>
     );
@@ -14,7 +14,7 @@ export default function Insights({ companion }) {
   const { coaching, cost, resale, eco } = companion;
   return (
     <div className="scroll">
-      <header className="app-bar"><div><h1>Insights</h1><p>Last {cost.window_days} days</p></div></header>
+      <header className="app-bar"><div><h1>Ownership</h1><p>Last {cost.window_days} days</p></div></header>
 
       <section className="compare">
         <div>

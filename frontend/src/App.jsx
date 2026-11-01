@@ -11,10 +11,10 @@ import FleetConsole from "./screens/FleetConsole.jsx";
 
 const TABS = [
   { id: "home", label: "Home", icon: HomeIcon },
-  { id: "navigate", label: "Navigate", icon: RouteIcon },
+  { id: "trip", label: "Trip", icon: RouteIcon },
   { id: "volt", label: "Volt", icon: MicIcon },
   { id: "battery", label: "Battery", icon: BatteryIcon },
-  { id: "insights", label: "Insights", icon: InsightsIcon },
+  { id: "ownership", label: "Ownership", icon: InsightsIcon },
 ];
 const isTab = (id) => TABS.some((t) => t.id === id);
 
@@ -113,7 +113,7 @@ export default function App() {
 
   // Companion data and the range breakdown depend on live state; refetch when it changes
   const v = state?.vehicle;
-  const key = v ? [v.soc, v.ambient_temp_c, v.hvac_mode, v.payload_kg, v.driving_style, v.live_sessions.length].join("|") : "";
+  const key = v ? [v.soc, v.ambient_temp_c, v.hvac_mode, v.payload_kg, v.driving_style, v.charging_habit, v.live_sessions.length].join("|") : "";
   useEffect(() => {
     if (!key) return;
     const t = setTimeout(() => {
@@ -129,13 +129,13 @@ export default function App() {
   const loaded = Boolean(state);
   useEffect(() => {
     if (!loaded) return;                       // the first snapshot is a baseline, not a change
-    if (lastRoute.current !== null && routeKey && routeKey !== lastRoute.current) setTab("navigate");
+    if (lastRoute.current !== null && routeKey && routeKey !== lastRoute.current) setTab("trip");
     lastRoute.current = routeKey;
   }, [routeKey, loaded]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const alert = {
-    navigate: Boolean(state?.route_projection?.at_risk),
-    insights: (companion?.coaching ?? []).some((t) => t.severity === "warn"),
+    trip: Boolean(state?.route_projection?.at_risk),
+    ownership: (companion?.coaching ?? []).some((t) => t.severity === "warn"),
   };
   const props = { state, live, network, companion, explain, go: setTab };
 
@@ -163,10 +163,10 @@ export default function App() {
             <>
               <main className="screen" key={tab}>
                 {tab === "home" && <Home {...props} />}
-                {tab === "navigate" && <Navigate {...props} />}
+                {tab === "trip" && <Navigate {...props} />}
                 {tab === "volt" && <Volt {...props} />}
                 {tab === "battery" && <Battery {...props} />}
-                {tab === "insights" && <Insights {...props} />}
+                {tab === "ownership" && <Insights {...props} />}
               </main>
               {toast && (
                 <button className={`toast ${toast.role}`} onClick={() => { closeToast(); setTab("volt"); }}>

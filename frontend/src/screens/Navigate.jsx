@@ -2,6 +2,7 @@ import { useState } from "react";
 import { inr, mins, pct } from "../api.js";
 import { BoltIcon, CloseIcon, HomeIcon, OfficeIcon, PinIcon } from "../icons.jsx";
 import MapView from "../components/MapView.jsx";
+import RangeRibbon from "../components/RangeRibbon.jsx";
 
 function Itinerary({ route, progressLeg }) {
   const items = [{ cls: "start", title: route.origin_name, sub: `Leave with ${pct(route.totals.start_soc)}` }];
@@ -37,7 +38,7 @@ function Itinerary({ route, progressLeg }) {
   );
 }
 
-function WhereTo({ live, atHome }) {
+function WhereTo({ state, live, atHome }) {
   const [place, setPlace] = useState("");
   const go = (text) => live.send(text);
   const submit = (e) => {
@@ -56,6 +57,7 @@ function WhereTo({ live, atHome }) {
         <button className="chip-btn" onClick={() => go("Take me to the office")}><OfficeIcon size={18} />Office</button>
         <button className="chip-btn" onClick={() => go("Take me to the nearest charger")}><BoltIcon size={18} />Nearest charger</button>
       </div>
+      <RangeRibbon range={state.range} />
       <p className="sheet-hint">Volt checks your charge before every trip and adds a charging stop only when you need one.</p>
     </>
   );
@@ -91,6 +93,7 @@ function ActiveRoute({ state, live }) {
           </button>
         </div>
       )}
+      <RangeRibbon range={state.range} route={route} />
       <Itinerary route={route} progressLeg={state.vehicle.progress?.leg ?? 0} />
     </>
   );
@@ -103,7 +106,7 @@ export default function Navigate({ state, live, network }) {
       <MapView state={state} network={network} />
       <section className="sheet" aria-label={state.route ? "Route" : "Plan a trip"}>
         <span className="sheet-handle" aria-hidden="true" />
-        {state.route ? <ActiveRoute state={state} live={live} /> : <WhereTo live={live} atHome={v.location === v.home_node} />}
+        {state.route ? <ActiveRoute state={state} live={live} /> : <WhereTo state={state} live={live} atHome={v.location === v.home_node} />}
       </section>
     </div>
   );

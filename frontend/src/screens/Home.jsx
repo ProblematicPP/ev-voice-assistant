@@ -56,7 +56,7 @@ function TripCard({ state, go }) {
   const proj = state.route_projection;
   const t = route.totals;
   return (
-    <button className="card trip-card" onClick={() => go("navigate")}>
+    <button className="card trip-card" onClick={() => go("trip")}>
       <span className="trip-card-head">
         <span>On the way to</span>
         {proj?.at_risk && <span className="pill bad">Re-plan needed</span>}
@@ -81,7 +81,7 @@ export default function Home({ state, live, companion, go }) {
   const send = (text) => live.send(text);
   const actions = [
     atHome
-      ? { label: "Plan a trip", icon: RouteIcon, run: () => go("navigate") }
+      ? { label: "Plan a trip", icon: RouteIcon, run: () => go("trip") }
       : { label: "Drive home", icon: HomeIcon, say: "Take me home" },
     { label: "Drive to office", icon: OfficeIcon, say: "Take me to the office" },
     { label: "Nearby chargers", icon: BoltIcon, say: "Show nearby chargers" },
@@ -118,7 +118,7 @@ export default function Home({ state, live, companion, go }) {
       </section>
 
       {companion && (
-        <button className="card saving" onClick={() => go("insights")}>
+        <button className="card saving" onClick={() => go("ownership")}>
           <span>Saved this month compared with a petrol car</span>
           <strong className="num">{inr(companion.cost.monthly_saving_vs_petrol_inr)}</strong>
           <span className="faint">Running cost ₹{companion.cost.cost_per_km_inr.toFixed(2)} per km</span>
