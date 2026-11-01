@@ -265,7 +265,8 @@ class ToolRouter:
             e2 = bat.edge_energy_kwh(self.ctx.net, {**cond, "hvac_mode": "off"})
             arr2 = self.st.soc - planner.path_profile(self.st.location, target["node"], e2)["energy_kwh"] / bat.usable_kwh()
             facts["arrival_with_climate_off"] = _pct(max(arr2, 0))
-        plan = planner.plan(self.st.location, [target["node"]], self.st.soc, cond)
+        # Same target as the offered "via a charger" route, so the stop we describe is the stop we take
+        plan = planner.plan(self.st.location, [target["node"]], self.st.soc, cond, COMFORT_SOC)
         decision = guard.check("navigate", plan=plan)
         if arrive <= 0:
             reach_km = prof["distance_km"] * self.st.soc / (self.st.soc - arrive)
@@ -442,7 +443,7 @@ class ToolRouter:
         e = self.ctx.eco()
         h = e["history"]
         say = (f"You average {h['harsh_brakes_per_100km']:.1f} harsh brakes and {h['harsh_accels_per_100km']:.1f} hard "
-               f"accelerations per 100 km, about {e['events_vs_typical']:.0f} times a smooth driver. ")
+               f"accelerations per 100 km, about {e['events_vs_typical']:.0f} times as many as a smooth driver. ")
         if e["range_gain_km"] >= 1:
             say += (f"Braking earlier so regen can recover energy, and pulling away gently, would add about "
                     f"{e['range_gain_km']:.0f} km at today's charge.")
@@ -450,7 +451,7 @@ class ToolRouter:
             say += e["tips"][-1]["message"]
         facts = {"harsh_brakes_per_100km": h["harsh_brakes_per_100km"],
                  "harsh_accels_per_100km": h["harsh_accels_per_100km"], "km_analysed": h["km"],
-                 "times_typical_driver": e["events_vs_typical"], "range_gain_if_smoother_km": e["range_gain_km"],
+                 "harsh_events_vs_smooth_driver": f"{e['events_vs_typical']:.0f}x as many (worse)", "range_gain_if_smoother_km": e["range_gain_km"],
                  "last_drive": e["recent_drive"], "tips": [t["message"] for t in e["tips"]]}
         return result("get_eco_driving_coaching", {}, True, say, facts)
 

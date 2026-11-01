@@ -1,186 +1,231 @@
-# Volt: a battery-grounded voice assistant for EVs (prototype)
+# AI for Optimizing EVs: Volt and the battery-intelligence core
 
+Final-year project, Dept. of AIML, AMC Engineering College.
 **Project page:** https://problematicpp.github.io/ev-voice-assistant/
 
-![Trip tab: a Bengaluru to Mysuru route on real OpenStreetMap roads with an automatically chosen charging stop](docs/images/trip.png)
+![Trip screen: a Bengaluru to Mysuru route on real OpenStreetMap roads, with an automatically chosen charging stop and the range ribbon](docs/images/trip.png)
 
-A single-vehicle, single-owner voice assistant whose every navigation/charging/energy action is checked
-against a **battery-intelligence core** (PyTorch SOH + personalized range models) before it executes.
-Everything runs locally on synthetic data: no API keys, no cloud.
+One shared **battery-intelligence core** (PyTorch SOH, personalised range, RUL, Shapley range attribution
+and a battery guard) feeds four consumers:
 
 ```
-Voice (browser mic) ─► faster-whisper (STT) ─► local LLM via Ollama (intent + tool call)
-        ─► function router ─► BATTERY GUARD ─► battery core / route planner / companion logic
-        ─► LLM phrases reply from tool facts ─► Piper text-to-speech (spoken + shown in the UI)
+Voice assistant "Volt" ──┐
+Companion app ───────────┤──► Battery-Intelligence Core  (backend/app/battery_core)
+Route & charging planner ┤      SOH model · personalised range model · RUL / degradation
+Fleet management ────────┘      Shapley attribution · battery guard (every action passes it)
+
+Fed by: simulated OBD-II/CAN telemetry, charging history, weather (live Open-Meteo or simulated),
+        simulated traffic and charger availability, OpenStreetMap chargers + demo chargers
 ```
 
-If Ollama isn't running, a rule-based intent parser takes over, so the demo never dead-ends.
+Everything runs locally, with no API keys and no paid services. Live weather is optional and falls back
+to the simulator offline. All battery, owner and fleet data is synthetic; roads, places and most charger
+locations are real (OpenStreetMap).
+
+A Volt turn:
+```
+mic ─► faster-whisper (STT, GPU) ─► Ollama qwen3.5:4b (tool call)  ── or the rule-based parser if Ollama is down
+    ─► function router ─► battery guard ─► core / planner / companion / fleet
+    ─► LLM phrases the reply from the tool's facts ─► Piper TTS
+```
 
 ---
 
-## 1. Prerequisites (Windows)
+## 1. Prerequisites (Windows; macOS/Linux work with the usual path changes)
 
 | Tool | Version | Install |
 |---|---|---|
-| Python | **3.12** (not 3.14: some wheels lag) | `uv` fetches it for you (below), or python.org |
+| Python | **3.12** | `uv` fetches it for you (below) |
 | uv | any recent | `pip install uv` |
 | Node.js | 18+ (tested on 24) | nodejs.org |
 | Ollama | latest | `winget install Ollama.Ollama` or https://ollama.com/download |
 
-ffmpeg is **not** required (audio decoding uses PyAV, bundled with faster-whisper).
-An NVIDIA GPU is optional; it is used automatically when present (see GPU use below).
+ffmpeg is not needed. An NVIDIA GPU is optional and is used automatically when present.
 
-## 2. Backend setup
+## 2. Set up from a fresh clone
 
 ```powershell
-cd backend
+git clone https://github.com/ProblematicPP/ev-voice-assistant.git
+cd ev-voice-assistant\backend
+
+# Python environment
 uv venv --python 3.12 .venv
 uv pip install --python .venv\Scripts\python.exe -r requirements.txt
 uv pip install --python .venv\Scripts\python.exe torch --index-url https://download.pytorch.org/whl/cpu
 
-# Download the Karnataka OpenStreetMap extract (~130 MB, once), build the road graph,
-# generate the synthetic battery/owner data (~6-8 minutes total), then train both models
+# Data: downloads the Karnataka OSM extract (~130 MB, once), builds the road graph, places demo
+# chargers, and generates cells, trips, owner history and the rental fleet (~6-8 min)
 .venv\Scripts\python.exe -m data_gen.generate_all
-.venv\Scripts\python.exe -m training.train_soh
-.venv\Scripts\python.exe -m training.train_range
 
-# Tests (20 tests: planner, guard, attribution, parser, LLM plumbing with a mocked Ollama)
+# Models (about 1 minute in total on CPU). Weights + scalers are saved in backend/models/
+.venv\Scripts\python.exe -m training.train_soh       # SOH MLP, split by cell
+.venv\Scripts\python.exe -m training.train_range     # fleet Wh/km MLP + owner fine-tune
+.venv\Scripts\python.exe -m training.train_demand    # fleet demand forecaster
+
+# Tests (~2 min)
 .venv\Scripts\python.exe -m pytest -q
+
+# Local LLM (~3.3 GB)
+ollama pull qwen3.5:4b
+
+# Frontend packages
+cd ..\frontend
+npm install
 ```
 
-## 3. Local LLM (Ollama)
+`backend/data/` and `backend/models/` are generated, not committed. Once trained, the app only loads the
+saved weights; it never retrains at startup.
+
+## 3. Run
 
 ```powershell
-ollama pull qwen3.5:4b      # ~3.3 GB, fits the RTX 4050's 6 GB VRAM with room for Whisper
-ollama serve                # usually already running as a background service after install
-```
-
-`qwen3.5:4b` has native tool calling; the backend disables its "thinking" mode for fast replies.
-To use another model, e.g. `qwen2.5:7b`, set `$env:OLLAMA_MODEL = "qwen2.5:7b"` before starting the
-backend. The backend warms the model up at startup, because the very first call compiles CUDA kernels
-and can take over a minute.
-
-Measured on an RTX 4050 laptop: the LLM generates ~43 tokens/s, a full assistant turn (tool choice,
-guarded execution, phrased reply) takes ~4 s, and GPU speech-to-text takes ~0.5 s.
-
-## 4. Run
-
-Two terminals:
-
-```powershell
-# Terminal 1: backend (API on :8000)
+# Terminal 1: backend (API on :8000, docs at http://localhost:8000/docs)
 cd backend
 .venv\Scripts\python.exe -m uvicorn app.main:app --port 8000
 
-# Terminal 2: frontend (UI on :5173; proxies /api to the backend)
+# Terminal 2: frontend (UI on :5173, proxies /api to the backend)
 cd frontend
-npm install
 npm run dev
 ```
 
-Open http://localhost:5173. API docs: http://localhost:8000/docs. The header shows whether the LLM is
-connected or the assistant is in rule-based mode.
+Open http://localhost:5173. On first start the backend downloads Whisper `small.en` (~480 MB) and the
+Piper voice (~60 MB) once, and warms up the LLM (allow ~30-60 s before demoing).
 
-The page has the assistant chat on the left and four tabs on the right: **Trip** (real map, route and
-charging plan), **Battery** (health trend, range explanation, charging history), **Ownership**
-(charging coach, cost per km, resale) and **Simulator** (demo controls and event log). Tabs can be
-linked directly, e.g. `http://localhost:5173/#battery`.
+- **Driver app** (the phone): Home, **Trip** (map, route, range ribbon), **Volt** (chat and voice), **Battery**,
+  **Ownership**. Screens can be linked directly, e.g. `http://localhost:5173/#battery`.
+- **Simulator** (the panel beside the phone, not part of the app): charge, temperature, AC, driving
+  style, charging habit, location, one-click scenarios, "drive forward", live weather, system status and
+  the last assistant turn (tool, arguments and guard verdict).
+- **Fleet console** (switch at the top): demand heatmap, rebalancing moves, both allocation policies,
+  round-trip rental routes and the battery-life result.
 
-| Battery tab | Ownership tab |
-|---|---|
-| ![Battery tab](docs/images/battery.png) | ![Ownership tab](docs/images/ownership.png) |
-
-On first start the backend downloads the Whisper `small.en` model (~480 MB) and the Piper voice
-`en_US-lessac-medium` (~60 MB) once, then preloads both in the background.
-
-### GPU use
-
-| Component | Device | Why |
+| Battery | Ownership | Fleet console |
 |---|---|---|
-| LLM (Ollama) | **GPU** automatically | Ollama detects CUDA itself; the 7B model fits in 6 GB VRAM |
-| Speech-to-text (faster-whisper) | **GPU** if available, else CPU | `WHISPER_DEVICE=auto` tries CUDA float16 first and falls back to CPU int8. CUDA libraries come from pip (`nvidia-cublas-cu12`, `nvidia-cudnn-cu12`, in requirements.txt) and are registered at runtime by `app/gpu.py` |
-| Text-to-speech (Piper) | CPU | Already much faster than real time; GPU would need `onnxruntime-gpu` for no audible gain |
-| SOH / range models (PyTorch) | CPU | Tiny MLPs (5-7k parameters each): a GPU is *slower* here because copying each small batch to the card costs more than the maths. Training takes seconds on CPU |
+| ![Battery screen](docs/images/battery.png) | ![Ownership screen](docs/images/ownership.png) | ![Fleet console](docs/images/fleet.png) |
 
-Overrides: `$env:WHISPER_DEVICE = "cpu"` to force CPU, `$env:WHISPER_MODEL = "base.en"` for a smaller model.
-`/api/health` reports which device Whisper actually loaded on.
+## 4. Evaluate
 
-## 5. Demo script (works in rule-based mode too)
+```powershell
+cd backend
+.venv\Scripts\python.exe -m eval.run_all          # full run, ~4 min (needs Ollama for the LLM row)
+.venv\Scripts\python.exe -m eval.run_all --quick  # skips the LLM and voice runs
+```
 
-| Say / do | Shows |
+This prints a table and writes [`results/metrics.md`](results/metrics.md) (plus `metrics.json`). It covers:
+
+- SOH and range accuracy (MAE and MAPE on held-out cells and trips, fleet vs personalised)
+- the battery-aware planner vs a static brochure-range baseline over 108 trips
+- assistant task success and latency through the LLM and the fallback, plus voice timings and the GPU
+- fleet battery longevity, demand-forecast error and rebalancing
+
+Without an NVIDIA GPU the speech models run on CPU, and the report says so.
+
+## 5. Demo
+
+See [`DEMO_SCRIPT.md`](DEMO_SCRIPT.md) for the 5-minute review sequence and fallbacks.
+
+## 6. How it works
+
+### Battery-intelligence core (`backend/app/battery_core`)
+
+| Piece | What it does |
 |---|---|
-| "Will I make it to Mysore without stopping?" | Range query on the real 148 km road route → "no, ~48 km short", proposes a stop |
-| "Yes" | AI route determiner: picks a real OSM charger (Magenta ChargeGrid), charges only to what's needed; route drawn on the map |
-| Simulator tab → **+30 km** | Simulated drive along the route |
-| "Also stop at a McDonald's on the way" | Mid-drive re-plan: picks the detour-minimising McD, adds a charger if needed |
-| Scenario **Road trip, 74% charge** → "Take me to Mysuru" → **+30 km** → set 40 °C and AC | Direct trip (arrive 16%) becomes unsafe → proactive nudge → "yes" re-plans with a short top-up |
-| Scenario **Low battery, far from home** | Nudge: "18% left, 55 km from home - route via a charger?" |
-| "Why is my range lower than usual?" | Shapley range-drop attribution (AC, heat, style, load, ageing) |
-| "Take me to the nearest McD" | Context-aware command, range-checked before confirming |
-| Scenario **Hot day, plugged in** → "yes" | Predictive pre-cooling **stub** (grid power, guard-checked) |
-| "Show the left turn camera" | Assisted-driving **stub** |
-| "How are my charging habits?" / "Cost per km and resale?" | Companion coaching, cost, SOH-driven resale |
+| `soh_model.py` | MLP on 10 BMS cycle features. Cells split 65/15/20 into train/val/test **by cell**; held-out MAE ≈ 0.7-0.9 %-points SOH |
+| `range_model.py` | MLP predicting Wh/km from weather, HVAC, driving style, speed, load and SOH. A fleet model is fine-tuned on the owner's own trips (`range_model_owner.pt`). Range = usable kWh × SOH × SOC ÷ Wh/km; the brochure figure (312 km × SOC) is exposed alongside |
+| `degradation.py` | SOH projection and remaining useful life (years to 70%) under a charging habit; drives the 2-year resale projection and fleet longevity |
+| `attribution.py` | Exact Shapley values over AC/heater, battery ageing, driving style, temperature and load (32 batched model calls) |
+| `guard.py` | `check(action, ...)`: the single gate every action passes. Returns allow / modify / refuse, a reason and, when relevant, a proposed charging stop |
+| `core.py` | `BatteryCore`, the only entry point. A test fails if any other module imports the SOH, ageing or degradation code directly |
 
-## 6. Project layout
+### Route and charging-stop planner (`backend/app/routing`)
+
+- **Roads:** fastest paths with Dijkstra on the real OSM graph.
+- **Energy:** each road edge's kWh comes from the range model under live conditions.
+- **Stop search:** charging stops are chosen by A* over (charger, target-SOC) states. A transition is allowed only if arrival charge stays above the safety floor. The cost is driving + charging + queue minutes, with the charge-time taper above 80%.
+- **Output:** distance, duration including stops, traffic delay, arrival charge, stop name, charge time, ₹ cost and a polyline.
+- **Mid-trip re-planning:** a detour re-plans from the current position.
+- **Not reinforcement learning:** the deck cites DQN/RL-style stop selection as related work. This project uses graph search with learned energy costs; RL is not implemented.
+
+### Volt (`backend/app/assistant`)
+
+- **Speech:** faster-whisper STT (GPU when available), Piper TTS (CPU).
+- **LLM:** Ollama `qwen3.5:4b` with native tool calling over 16 tools.
+- **Safety nets:**
+  - The rule-based parser takes over when Ollama is down or fails.
+  - When the model answers a clear command in prose, the parser acts on it instead.
+  - When the model picks only a lookup for a clear command (e.g. a range check for "take me to Mysuru"), the command wins.
+- **Proactive nudges:** checked every 8 s and pushed over the WebSocket, then shown and spoken in the UI. Triggers:
+  - a route that is no longer safe
+  - low charge far from home
+  - pre-cooling on a hot day
+  - an unusual range drop
+  - harsh braking on the last drive
+  - fast charging too often
+- **Hardware stubs:** assisted driving, pre-cooling and the OBD-II dongle are stubs, clearly marked in code (`assistant/stubs/`, `telemetry.ObdDongle`).
+
+### Companion and fleet
+
+- **Companion** (`app/companion`): charging coach from the owner's sessions, eco-driving coach from
+  telemetry, 30-day cost vs petrol, and resale value with a 2-year projection by charging habit.
+- **Fleet** (`app/fleet`):
+  - a 40-car synthetic rental fleet, each car's SOH estimated by the core from its own BMS log
+  - battery-aware allocation (healthy packs take long trips, worn packs short city rentals)
+  - a PyTorch demand forecaster (zone × hour × weather)
+  - Poisson rebalancing that estimates missed rentals saved
+  - round-trip rental routes on the shared planner
+  - a one-year longevity simulation against a first-available baseline
+
+### External inputs (`app/inputs`)
+
+Small provider classes a real API can replace:
+- `LiveWeather` uses Open-Meteo (free, no key) and falls back offline.
+- `SimulatedTraffic` adds rush-hour delay to ETAs.
+- `SimulatedStations` simulates charger queues and outages, which the planner weighs.
+
+## 7. Layout
 
 ```
 backend/
   app/
-    battery_core/   ① Battery-Intelligence Core
-      nn.py           PyTorch MLP regressor (shared)
-      soh_model.py    SOH from 10 BMS features
-      range_model.py  Wh/km model → personalized range
-      attribution.py  exact Shapley range-drop explanation
-      guard.py        feasibility checks every action must pass
-      ageing.py       semi-empirical ageing model (data synthesis + SOH projection)
-      core.py         BatteryCore facade other modules call
-    routing/        OpenStreetMap road graph, energy-aware planner, mid-drive re-planner
-    assistant/      ② STT, Ollama client, tool schemas, router, fallback parser, nudges, pipeline
-      stubs/          assisted_driving.py, precooling.py: HARDWARE STUBS (future phase)
-    companion/      ③ coaching, cost per km, resale estimate
+    battery_core/   shared core: nn, soh_model, range_model, degradation, attribution, guard, core
+    routing/        OSM network, planner, mid-drive re-planner
+    assistant/      STT, TTS, Ollama client, tools, router, fallback parser, nudges, pipeline, stubs/
+    companion/      charging coach, eco coach, cost, resale
+    fleet/          fleet manager + demand model
+    inputs/         weather / traffic / charger-availability providers
+    telemetry.py    simulated CAN bus + harsh-event detection (OBD-II dongle stub)
     api/            FastAPI routers + WebSocket hub
-    simulation.py   demo drive simulation
-  data_gen/         osm_fetch.py + build_osm_network.py (real map), synthetic battery/owner data
-                    generators (physics.py = ground truth for synthesis only)
-  training/         train_soh.py, train_range.py
-  data/, models/    generated outputs
-  tests/
-frontend/src/       React UI: assistant chat, range ribbon, and tabs for Trip (Leaflet map),
-                    Battery, Ownership (companion app) and Simulator (demo controls)
+  data_gen/         OSM download + graph build, demo chargers, synthetic cells/trips/owner/fleet
+  training/         train_soh, train_range, train_demand
+  eval/             run_all (writes ../results/metrics.md)
+  tests/            pytest suite
+frontend/src/       React: phone app screens, fleet console, simulator dock
+results/            evaluation output
 ```
 
-## 7. Map data (OpenStreetMap)
+## 8. Data
 
-`data_gen/osm_fetch.py` downloads the Karnataka extract from openstreetmap.fr, and
-`data_gen/build_osm_network.py` turns it into a routing graph: major roads split at intersections,
-speeds from `maxspeed` or road class (reduced inside Bengaluru for traffic), the largest connected
-component kept, and towns, Bengaluru suburbs, the airport, car chargers (scooter and battery-swap
-networks excluded) and POIs snapped to the nearest road. The UI draws it on OpenStreetMap tiles with
-Leaflet; tiles need internet, routing does not.
-
-Map data © OpenStreetMap contributors, available under the
-[Open Database License](https://www.openstreetmap.org/copyright).
-
-## 8. Datasets
-
-| File | Rows | Purpose |
+| File | Size | Purpose |
 |---|---|---|
-| `cell_cycles.csv` | ~30k cycles, 36 cells | NASA/CALCE-shaped ageing data → SOH model (split by cell) |
-| `cell_timeseries.csv` | ~5k | raw V/I/T/SOC traces for sample cycles (illustrative) |
-| `trips.csv` | 24k | trip segments with temp, HVAC, style, speed, gradient, load → Wh/km model |
-| `vehicle_bms_history.csv` | ~750 cycles | the demo car's BMS log since purchase → current SOH |
-| `owner_trips.csv`, `charging_history.csv` | 90 days | personalization (driving style, highway share), coaching, cost |
-| `network.json` | 39,755 nodes, 49,435 km | **Real** Karnataka roads (motorway to secondary), 1,379 places, 37 car chargers, 371 POIs from OpenStreetMap |
-
-Model results (held-out): SOH MAE ≈ 0.55 % SOH (R² 0.99); range MAPE ≈ 4.2 % (≈ the 5 % noise put into
-the data). These numbers describe fit to *synthetic* data, not real-world accuracy.
+| `network.json` | 39,755 nodes | **Real** Karnataka roads, places, 37 OSM car chargers, POIs |
+| `demo_chargers.json` | 56 | Seeded demo chargers, labelled as demo in the UI. Six anchor the intercity destinations (Mysuru, Hassan, …) where OSM lists none |
+| `cell_cycles.csv` | ~30k cycles, 36 cells | NASA/CALCE-shaped ageing data → SOH model |
+| `trips.csv` | 24k segments | fleet Wh/km training data |
+| `vehicle_bms_history.csv` | ~770 cycles | the demo car's BMS log → current SOH |
+| `owner_trips.csv`, `charging_history.csv` | 90 days | personal range fine-tune, coaching, cost |
+| `fleet_*.csv` | 40 cars, 180 days × 24 h × 12 zones | fleet SOH, demand model, bookings |
 
 ## 9. Honest limitations
 
-- All data is synthetic; the physics used to synthesize it is simplified.
-- Assisted driving and pre-cooling are logging stubs, not vehicle integrations.
-- Roads, places and charger locations are real (OpenStreetMap), but OSM maps only 37 car chargers in
-  Karnataka and gives power/price for almost none: those values are estimated and flagged in the UI.
-  Long trips (e.g. Bengaluru to Hubballi) can be reported unreachable because of these mapping gaps.
-- Road speeds are estimated from road class and city traffic; OSM has no elevation, so hills are ignored.
-- Voice replies use one English Piper voice; there is no Indian-English Piper voice yet.
+- All battery, owner, trip and fleet data is synthetic, from simplified physics. Accuracy figures describe
+  fit to that data, not real-world accuracy. The routing and fleet comparisons are simulations.
+- Hardware features (OBD-II/CAN, assisted-driving cameras, pre-cooling) are stubs.
+- OSM has few Karnataka car chargers and almost no power/price data. Those values are estimated and flagged,
+  and the demo chargers are invented to give the planner choices.
+- No elevation data. Traffic and charger queues are simulated.
+- Charging-stop selection is graph search, not reinforcement learning.
+- One English Piper voice. The 4B LLM occasionally picks a different tool; the safety nets above catch the
+  common cases, and every executed action still passes the battery guard.
+
+Map data © OpenStreetMap contributors, [ODbL](https://www.openstreetmap.org/copyright).
+Weather from [Open-Meteo](https://open-meteo.com/) (CC BY 4.0).
