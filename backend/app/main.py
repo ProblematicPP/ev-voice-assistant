@@ -7,7 +7,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.api import battery, companion, routes, sim, ws_assistant
+from app.api import battery, companion, fleet, routes, sim, ws_assistant
 from app.api.hub import hub
 from app.assistant import stt, tts
 from app.assistant.pipeline import AssistantPipeline
@@ -67,7 +67,7 @@ async def reject_cross_site_writes(request: Request, call_next):
     if request.method not in ("GET", "HEAD", "OPTIONS") and origin and origin not in ALLOWED_ORIGINS:
         return JSONResponse({"detail": "Cross-origin request refused"}, status_code=403)
     return await call_next(request)
-for r in (battery, companion, routes, sim, ws_assistant):
+for r in (battery, companion, fleet, routes, sim, ws_assistant):
     app.include_router(r.router)
 
 

@@ -43,3 +43,13 @@ def remaining_life(soh_now: float, cum_stress0: float, fast_share: float, eol: f
     cycles = int(hit[0]) + 1 if len(hit) else n
     return {"eol_soh": eol, "cycles": cycles, "years": round(cycles / CYCLES_PER_YEAR, 1),
             "capped": not len(hit), "fast_charge_share": round(fast_share, 2)}
+
+
+def trip_stress(depth: float, charge_c: float = SLOW_C, temp_c: float = 27.0) -> float:
+    """Ageing stress from one discharge of `depth` (fraction of usable capacity) and its recharge."""
+    return float(cycle_stress(temp_c, charge_c, min(max(depth, 0.0), 1.0)))
+
+
+def soh_after(soh_now: float, cum_stress0: float, added_stress: float) -> float:
+    """SOH once `added_stress` more ageing has accumulated on top of cum_stress0."""
+    return max(0.5, soh_now - float(fade_from_stress(cum_stress0 + added_stress) - fade_from_stress(cum_stress0)))

@@ -54,17 +54,35 @@ class BatteryCore:
         }
 
     # -- Degradation / RUL ----------------------------------------------------
-    def project_soh(self, years: float, fast_share: float, soh_now: float | None = None) -> float:
+    # Defaults describe the owner's car; the fleet module passes each vehicle's own SOH and ageing stress.
+    def project_soh(self, years: float, fast_share: float, soh_now: float | None = None,
+                    cum_stress: float | None = None) -> float:
         """SOH after `years` more of driving with a given share of DC fast charging."""
         soh = self.soh_now if soh_now is None else soh_now
-        return degradation.project_soh(soh, self.profile["ageing_state"]["cum_stress"], years, fast_share)
+        cum = self.profile["ageing_state"]["cum_stress"] if cum_stress is None else cum_stress
+        return degradation.project_soh(soh, cum, years, fast_share)
 
     def rul(self, fast_share: float | None = None, soh_now: float | None = None,
-            eol: float = degradation.EOL_SOH) -> dict:
+            eol: float = degradation.EOL_SOH, cum_stress: float | None = None) -> dict:
         """Remaining useful life: cycles / years until SOH reaches `eol` (default 70%)."""
         share = float(self.bms.iloc[-1]["fast_charge_ratio"]) if fast_share is None else fast_share
         soh = self.soh_now if soh_now is None else soh_now
-        return degradation.remaining_life(soh, self.profile["ageing_state"]["cum_stress"], share, eol)
+        cum = self.profile["ageing_state"]["cum_stress"] if cum_stress is None else cum_stress
+        return degradation.remaining_life(soh, cum, share, eol)
+
+    def trip_stress(self, depth: float, fast: bool = False, temp_c: float = 27.0) -> float:
+        return degradation.trip_stress(depth, degradation.FAST_C if fast else degradation.SLOW_C, temp_c)
+
+    def soh_after(self, soh_now: float, cum_stress0: float, added_stress: float) -> float:
+        return degradation.soh_after(soh_now, cum_stress0, added_stress)
+
+    def vehicle_range_km(self, soc: float, soh: float, state, highway_share: float) -> float:
+        """Range of any vehicle (its own SOH) under the current weather / HVAC / driving conditions."""
+        return self.range_model.range_km(soc, {**self.conditions(state), "soh": soh}, highway_share)
+
+    def estimate_soh(self, bms_rows: pd.DataFrame) -> float:
+        """SOH for any pack from its recent BMS cycle log (same model and smoothing as the owner's car)."""
+        return self.soh_model.current(bms_rows)
 
     # -- Range ----------------------------------------------------------------
     def conditions(self, state) -> dict:

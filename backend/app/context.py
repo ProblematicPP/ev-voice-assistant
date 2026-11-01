@@ -21,6 +21,8 @@ class AppContext:
         self.inputs = Inputs()
         self.telemetry = telemetry.SimulatedCanBus()      # stands in for the OBD-II/CAN dongle (telemetry.ObdDongle)
         self._telemetry_history = None
+        self._fleet = None
+        self._longevity = None
         self.planner = RoutePlanner(self.net, self.battery, self.inputs)
         self.sessions_hist = pd.read_csv(DATA_DIR / "charging_history.csv")
         self.trips = pd.read_csv(DATA_DIR / "owner_trips.csv")
@@ -58,6 +60,18 @@ class AppContext:
                 km += t.distance_km
             self._telemetry_history = telemetry.summarize(events, km)
         return self._telemetry_history
+
+    # -- fleet module (loaded on first use) -------------------------------------
+    def fleet(self):
+        if self._fleet is None:
+            from app.fleet import FleetManager
+            self._fleet = FleetManager(self)
+        return self._fleet
+
+    def fleet_longevity(self) -> dict:
+        if self._longevity is None:
+            self._longevity = self.fleet().longevity()
+        return self._longevity
 
     def eco(self) -> dict:
         recent = (self.state.telemetry or {}).get("drive")

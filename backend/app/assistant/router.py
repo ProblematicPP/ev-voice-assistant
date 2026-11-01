@@ -454,6 +454,24 @@ class ToolRouter:
                  "last_drive": e["recent_drive"], "tips": [t["message"] for t in e["tips"]]}
         return result("get_eco_driving_coaching", {}, True, say, facts)
 
+    def t_get_fleet_status(self):
+        f = self.ctx.fleet()
+        o, r = f.overview(), f.rebalance()
+        worn = o["bands"].get("near end of life", 0)
+        say = (f"The fleet has {o['count']} cars at {o['avg_soh'] * 100:.0f}% average battery health; {worn} are near "
+               f"end of life and kept on short urban rentals. ")
+        if r["moves"]:
+            m = r["moves"][0]
+            say += (f"Move {len(r['moves'])} idle car{'s' if len(r['moves']) > 1 else ''} for the next "
+                    f"{r['horizon_h']} hours, starting with {m['vehicle_id']} from {m['from_name']} to {m['to_name']}. "
+                    f"That cuts expected missed rentals from {r['expected_lost_before']:.1f} to {r['expected_lost_after']:.1f}.")
+        else:
+            say += "Idle cars are already where the demand is."
+        facts = {"vehicles": o["count"], "avg_soh": o["avg_soh"], "health_bands": o["bands"],
+                 "moves": r["moves"][:4], "expected_lost_before": r["expected_lost_before"],
+                 "expected_lost_after": r["expected_lost_after"]}
+        return result("get_fleet_status", {}, True, say, facts)
+
     def t_get_cost_and_resale(self):
         comp = self.ctx.companion()
         c, r = comp["cost"], comp["resale"]

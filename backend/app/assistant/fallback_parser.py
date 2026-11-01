@@ -95,6 +95,9 @@ def parse(text: str, has_pending_offer: bool = False, driving: bool = False):
     if re.search(r"\b(charger|charging station|charge point)s?\b", t):
         return "list_chargers", {"fast_only": "fast" in t}
 
+    if re.search(r"\b(fleet|rebalanc\w*|rentals?|which cars? (should|to) (i )?move)\b", t):
+        return "get_fleet_status", {}
+
     if re.search(r"\b(driving (style|habits?|tips?)|my driving|how (do|am) i driv\w*|harsh|brak(e|es|ing)|"
                  r"eco[- ]?driv\w*|drive (more )?(smooth\w*|efficient\w*)|accelerat\w*)\b", t):
         return "get_eco_driving_coaching", {}

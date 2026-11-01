@@ -19,6 +19,7 @@ import itertools
 import numpy as np
 
 from app.config import COMFORT_SOC, DC_TARGET_SOC, HARD_MIN_SOC, RESERVE_SOC, VEHICLE
+from app.battery_core.range_model import usable_kwh
 from app.inputs import Inputs
 from app.routing.network import RoadNetwork, hav_km
 
@@ -86,7 +87,7 @@ class RoutePlanner:
                  min_arrival: float = RESERVE_SOC, exclude=frozenset()):
         net = self.net
         energy = self.battery.edge_energy_kwh(net, cond)
-        usable = self.battery.usable_kwh()
+        usable = usable_kwh(cond["soh"])
         chargers = self._corridor(origin, dest, exclude)
         dest_ll = net.coords(dest)
 
@@ -185,7 +186,7 @@ class RoutePlanner:
     # -- multi-waypoint plan --------------------------------------------------
     def plan(self, origin: int, destinations: list[int], soc: float, cond: dict,
              min_final_soc: float = RESERVE_SOC, exclude=frozenset(), _boost: dict | None = None) -> dict:
-        usable = self.battery.usable_kwh()
+        usable = usable_kwh(cond["soh"])
         energy = self.battery.edge_energy_kwh(self.net, cond)
         boost = dict(_boost or {})      # waypoint index -> raised arrival SOC (see retry below)
         all_legs, all_stops, cur, cur_soc = [], [], origin, soc
@@ -223,7 +224,7 @@ class RoutePlanner:
                          target: float = DC_TARGET_SOC) -> dict | None:
         """The driver asked to charge on the way even though the battery doesn't strictly need it:
         pick the corridor charger with the smallest total time (detour + charging to `target`)."""
-        net, usable = self.net, self.battery.usable_kwh()
+        net, usable = self.net, usable_kwh(cond["soh"])
         energy = self.battery.edge_energy_kwh(net, cond)
         dist_o, pred_o = net.tree(origin)
         best = None
@@ -265,7 +266,7 @@ class RoutePlanner:
 
     def plan_direct(self, origin: int, destinations: list[int], soc: float, cond: dict) -> dict:
         """Shortest road route with no charging stops, whatever the arrival charge (the guard judges it)."""
-        usable = self.battery.usable_kwh()
+        usable = usable_kwh(cond["soh"])
         energy = self.battery.edge_energy_kwh(self.net, cond)
         legs, cur, cur_soc = [], origin, soc
         for i, dest in enumerate(destinations):
@@ -322,7 +323,7 @@ class RoutePlanner:
 
     def _infeasible(self, origin, destinations, soc, cond, failed_at, legs) -> dict:
         energy = self.battery.edge_energy_kwh(self.net, cond)
-        usable = self.battery.usable_kwh()
+        usable = usable_kwh(cond["soh"])
         dist, pred = self.net.tree(origin)
         reachable = []
         for c in self.net.chargers.values():

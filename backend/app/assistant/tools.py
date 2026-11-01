@@ -65,6 +65,9 @@ TOOLS = [
     _fn("get_eco_driving_coaching",
         "Feedback on DRIVING style from vehicle telemetry: harsh braking / acceleration per 100 km and how "
         "much range smoother driving would add. Use for 'how is my driving', 'am I braking too hard', eco-driving."),
+    _fn("get_fleet_status",
+        "Rental FLEET manager questions: fleet battery health, which idle cars to move where for upcoming "
+        "demand (rebalancing), and the busiest zones in the next hours."),
     _fn("get_cost_and_resale", "Running cost per km, savings vs petrol, and battery-driven resale value."),
 ]
 
