@@ -52,7 +52,7 @@ class AppContext:
             "coaching": coaching.coach(sessions),
             "charging_summary": coaching.summary(sessions),
             "cost": cost.cost_per_km(sessions, self.trips),
-            "resale": resale.estimate(self.battery.profile, self.battery.soh_now, self.recent_fast_share()),
+            "resale": resale.estimate(self.battery, self.recent_fast_share()),
         }
 
     # -- UI snapshot ------------------------------------------------------------

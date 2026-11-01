@@ -64,7 +64,8 @@ export default function Battery({ state, companion, explain }) {
         </div>
         <div>
           <h2>Battery health</h2>
-          <p>{b.soh_pct >= 90 ? "In good shape for its age." : "Wearing a little faster than usual."} {b.usable_kwh} kWh usable today.</p>
+          <p>{b.usable_kwh} kWh usable today. At your current charging habits it stays above 70% for
+            about {b.rul.years} more years.</p>
         </div>
       </section>
       <div className="stat-row">

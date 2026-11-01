@@ -11,7 +11,7 @@ import json
 import numpy as np
 import pandas as pd
 
-from app.battery_core import attribution
+from app.battery_core import attribution, degradation
 from app.battery_core.range_model import RangeModel, usable_kwh
 from app.battery_core.soh_model import SOHModel
 from app.config import DATA_DIR
@@ -49,8 +49,22 @@ class BatteryCore:
             "internal_resistance_mohm": round(float(last["internal_resistance_mohm"]), 1),
             "fast_charge_ratio": round(float(last["fast_charge_ratio"]), 3),
             "trend": self._soh_trend,
+            "rul": self.rul(),
             "model": {"type": "PyTorch MLP (10 BMS features)", **self.soh_model.metrics},
         }
+
+    # -- Degradation / RUL ----------------------------------------------------
+    def project_soh(self, years: float, fast_share: float, soh_now: float | None = None) -> float:
+        """SOH after `years` more of driving with a given share of DC fast charging."""
+        soh = self.soh_now if soh_now is None else soh_now
+        return degradation.project_soh(soh, self.profile["ageing_state"]["cum_stress"], years, fast_share)
+
+    def rul(self, fast_share: float | None = None, soh_now: float | None = None,
+            eol: float = degradation.EOL_SOH) -> dict:
+        """Remaining useful life: cycles / years until SOH reaches `eol` (default 70%)."""
+        share = float(self.bms.iloc[-1]["fast_charge_ratio"]) if fast_share is None else fast_share
+        soh = self.soh_now if soh_now is None else soh_now
+        return degradation.remaining_life(soh, self.profile["ageing_state"]["cum_stress"], share, eol)
 
     # -- Range ----------------------------------------------------------------
     def conditions(self, state) -> dict:

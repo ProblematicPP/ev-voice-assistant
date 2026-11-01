@@ -179,3 +179,11 @@ def test_range_model_is_personalised_from_owner_trips(ctx):
     assert m["mae"] < m["fleet_model_on_owner_test"]["mae"]     # beats the fleet model on held-out owner trips
     r = ctx.battery.range(ctx.state)
     assert r["naive_km"] > 0 and r["personalized_km"] > 0       # brochure figure exposed for comparison
+
+
+def test_rul_comes_from_core_and_tracks_charging_habit(ctx):
+    slow, fast = ctx.battery.rul(0.05), ctx.battery.rul(0.6)
+    assert 0 < fast["years"] < slow["years"]                # more fast charging, shorter life
+    assert ctx.battery.project_soh(2, 0.6) < ctx.battery.project_soh(2, 0.05) < ctx.battery.soh_now
+    proj = ctx.companion()["resale"]["projections"]
+    assert proj[0]["soh"] > proj[-1]["soh"] and proj[0]["years_to_70pct"] > proj[-1]["years_to_70pct"]
