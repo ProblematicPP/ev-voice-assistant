@@ -38,7 +38,7 @@ export default function SimControls({ state, network }) {
 
   return (
     <div className="tab-body">
-      <p className="muted" style={{ marginTop: 0 }}>
+      <p className="muted">
         Change the simulated car to trigger proactive nudges and re-planning. Scenarios reset everything else.
       </p>
       <h3>Scenarios</h3>
@@ -91,7 +91,7 @@ export default function SimControls({ state, network }) {
         </label>
         <div className="field">
           <span>Drive forward {v.driving ? "along the route" : "around town"}</span>
-          <div style={{ display: "flex", gap: 6 }}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
             {[10, 30, 60].map((km) => (
               <button key={km} className="btn small" onClick={() => call("/sim/drive", { km })}>+{km} km</button>
             ))}

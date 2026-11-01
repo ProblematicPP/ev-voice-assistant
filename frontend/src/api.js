@@ -70,6 +70,13 @@ export function useLive() {
   return { state, messages, connected, busy, send, push };
 }
 
+/** The latest Volt suggestion with a yes/no offer that the driver hasn't answered yet. */
+export function openOffer(messages) {
+  const i = messages.findLastIndex((m) => m.role === "nudge" && m.offer);
+  if (i < 0 || messages.slice(i + 1).some((m) => m.role === "user")) return null;
+  return messages[i];
+}
+
 export const pct = (x) => `${Math.round((x ?? 0) * 100)}%`;
 export const inr = (x) => `₹${Math.round(x ?? 0).toLocaleString("en-IN")}`;
 export const lakh = (x) => `₹${((x ?? 0) / 1e5).toFixed(1)} lakh`;

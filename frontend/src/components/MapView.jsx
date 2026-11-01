@@ -15,7 +15,9 @@ export default function MapView({ state, network }) {
   const v = state.vehicle;
 
   useEffect(() => {
-    const m = L.map(el.current, { zoomControl: true, attributionControl: true }).setView([v.lat, v.lon], 11);
+    // Attribution sits top-right so the bottom sheet never covers it
+    const m = L.map(el.current, { zoomControl: true, attributionControl: false }).setView([v.lat, v.lon], 11);
+    L.control.attribution({ position: "topright" }).addTo(m);
     L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
       maxZoom: 19,
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
@@ -38,7 +40,7 @@ export default function MapView({ state, network }) {
     g.clearLayers();
     const amber = css("--charge");
     network.chargers.forEach((c) => {
-      const est = c.synthetic_fields?.length ? " (estimated)" : "";
+      const est = c.demo ? "<br><i>Demo charger (not real OSM data)</i>" : c.synthetic_fields?.length ? " (estimated)" : "";
       L.circleMarker([c.lat, c.lon], { radius: 4, color: amber, weight: 2, fillColor: css("--panel"), fillOpacity: 1 })
         .bindTooltip(`<b>${esc(c.name)}</b><br>${esc(c.power_kw)} kW, ₹${esc(c.price_per_kwh)}/kWh${est}`)
         .addTo(g);
@@ -57,6 +59,11 @@ export default function MapView({ state, network }) {
       L.circleMarker([s.lat, s.lon], { radius: 9, color: css("--panel"), weight: 3, fillColor: css("--charge"), fillOpacity: 1 })
         .bindTooltip(`<b>Charge: ${esc(s.name)}</b><br>${Math.round(s.arrive_soc * 100)}% → ${Math.round(s.depart_soc * 100)}%, ${Math.round(s.charge_min)} min`)
         .addTo(g);
+    });
+    // Stops the driver added on the way (McDonald's, a town...) - everything before the final destination
+    (route.destination_coords ?? []).slice(0, -1).forEach(([lat, lon], i) => {
+      L.circleMarker([lat, lon], { radius: 8, color: css("--panel"), weight: 3, fillColor: css("--ok"), fillOpacity: 1 })
+        .bindTooltip(`<b>Stop:${esc(route.destination_names[i])}</b>`).addTo(g);
     });
     const end = route.polyline[route.polyline.length - 1];
     L.circleMarker(end, { radius: 8, color: css("--panel"), weight: 3, fillColor: css("--ink"), fillOpacity: 1 })

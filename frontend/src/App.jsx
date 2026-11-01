@@ -1,27 +1,28 @@
 import { useEffect, useRef, useState } from "react";
 import { api, useLive } from "./api.js";
-import AssistantPanel from "./components/AssistantPanel.jsx";
-import VehicleHeader from "./components/VehicleHeader.jsx";
-import TripTab from "./components/TripTab.jsx";
-import VehicleStatePanel from "./components/VehicleStatePanel.jsx";
-import CompanionPanel from "./components/CompanionPanel.jsx";
-import SimControls from "./components/SimControls.jsx";
+import { BatteryIcon, HomeIcon, InsightsIcon, MicIcon, RouteIcon } from "./icons.jsx";
+import Home from "./screens/Home.jsx";
+import Navigate from "./screens/Navigate.jsx";
+import Volt from "./screens/Volt.jsx";
+import Battery from "./screens/Battery.jsx";
+import Insights from "./screens/Insights.jsx";
+import SimDock from "./components/SimDock.jsx";
 
 const TABS = [
-  { id: "trip", label: "Trip" },
-  { id: "battery", label: "Battery" },
-  { id: "ownership", label: "Ownership" },
-  { id: "simulator", label: "Simulator" },
+  { id: "home", label: "Home", icon: HomeIcon },
+  { id: "navigate", label: "Navigate", icon: RouteIcon },
+  { id: "volt", label: "Volt", icon: MicIcon },
+  { id: "battery", label: "Battery", icon: BatteryIcon },
+  { id: "insights", label: "Insights", icon: InsightsIcon },
 ];
-
 const isTab = (id) => TABS.some((t) => t.id === id);
 
-/** Active tab: URL hash (#battery, shareable) > remembered choice > Trip. */
+/** Active screen: URL hash (#battery, shareable) > remembered choice > Home. */
 function useTab() {
   const [tab, setTab] = useState(() => {
     const hash = location.hash.slice(1);
     if (isTab(hash)) return hash;
-    try { const saved = localStorage.getItem("volt-tab"); return isTab(saved) ? saved : "trip"; } catch { return "trip"; }
+    try { const saved = localStorage.getItem("volt-screen"); return isTab(saved) ? saved : "home"; } catch { return "home"; }
   });
   useEffect(() => {
     const onHash = () => isTab(location.hash.slice(1)) && setTab(location.hash.slice(1));
@@ -31,42 +32,53 @@ function useTab() {
   const choose = (id) => {
     setTab(id);
     history.replaceState(null, "", `#${id}`);
-    try { localStorage.setItem("volt-tab", id); } catch { /* storage blocked */ }
+    try { localStorage.setItem("volt-screen", id); } catch { /* storage blocked */ }
   };
   return [tab, choose];
 }
 
-function TabBar({ tab, onChange, badges }) {
-  const refs = useRef({});
-  const onKey = (e, i) => {
-    const d = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
-    if (!d) return;
-    const next = TABS[(i + d + TABS.length) % TABS.length].id;
-    onChange(next);
-    refs.current[next]?.focus();
-  };
+function BottomNav({ tab, onChange, alert }) {
   return (
-    <div className="tabbar" role="tablist" aria-label="Sections">
-      {TABS.map((t, i) => (
-        <button key={t.id} ref={(el) => (refs.current[t.id] = el)} role="tab" id={`tab-${t.id}`}
-          aria-selected={tab === t.id} aria-controls={tab === t.id ? `panel-${t.id}` : undefined} tabIndex={tab === t.id ? 0 : -1}
-          className={`tab ${tab === t.id ? "active" : ""}`} onClick={() => onChange(t.id)} onKeyDown={(e) => onKey(e, i)}>
-          {t.label}
-          {badges[t.id] && <span className={`tab-badge ${badges[t.id].kind}`}>{badges[t.id].text}</span>}
+    <nav className="bottom-nav" aria-label="Sections">
+      {TABS.map(({ id, label, icon: I }) => (
+        <button key={id} className={`nav-item ${id === "volt" ? "nav-volt" : ""} ${tab === id ? "active" : ""}`}
+          aria-current={tab === id ? "page" : undefined} onClick={() => onChange(id)}>
+          <span className="nav-icon"><I size={id === "volt" ? 26 : 22} />{alert[id] && <i className="nav-dot" />}</span>
+          <span className="nav-label">{label}</span>
         </button>
       ))}
-    </div>
+    </nav>
   );
+}
+
+/** Volt's reply pops up as a toast when it arrives while another screen is open. */
+function useReplyToast(messages, tab) {
+  const [toast, setToast] = useState(null);
+  const seen = useRef(null);
+  useEffect(() => {
+    const last = messages.at(-1);
+    if (!last || last.role === "user") return;
+    if (seen.current === null) { seen.current = last.id; return; }
+    if (last.id === seen.current) return;
+    seen.current = last.id;
+    if (tab === "volt") return;
+    setToast(last);
+    const t = setTimeout(() => setToast(null), 7000);
+    return () => clearTimeout(t);
+  }, [messages, tab]);
+  useEffect(() => { if (tab === "volt") setToast(null); }, [tab]);
+  return [toast, () => setToast(null)];
 }
 
 export default function App() {
   const live = useLive();
-  const { state } = live;
+  const { state, messages } = live;
   const [network, setNetwork] = useState(null);
   const [health, setHealth] = useState(null);
   const [companion, setCompanion] = useState(null);
   const [explain, setExplain] = useState(null);
   const [tab, setTab] = useTab();
+  const [toast, closeToast] = useReplyToast(messages, tab);
 
   useEffect(() => {
     api("/network").then(setNetwork).catch(() => {});
@@ -76,7 +88,7 @@ export default function App() {
     return () => clearInterval(t);
   }, []);
 
-  // Companion + range explanation depend on live state; refetch when it changes
+  // Companion data and the range breakdown depend on live state; refetch when it changes
   const v = state?.vehicle;
   const key = v ? [v.soc, v.ambient_temp_c, v.hvac_mode, v.payload_kg, v.driving_style, v.live_sessions.length].join("|") : "";
   useEffect(() => {
@@ -88,47 +100,52 @@ export default function App() {
     return () => clearTimeout(t);
   }, [key]);
 
-  // Jump to the Trip tab when the assistant creates or changes a route
+  // Open the map when a route is created or changed
   const routeKey = state?.route ? `${state.route.destinations.join(",")}|${state.route.stops.length}` : "";
   const lastRoute = useRef(null);
   const loaded = Boolean(state);
   useEffect(() => {
     if (!loaded) return;                       // the first snapshot is a baseline, not a change
-    if (lastRoute.current !== null && routeKey && routeKey !== lastRoute.current) setTab("trip");
+    if (lastRoute.current !== null && routeKey && routeKey !== lastRoute.current) setTab("navigate");
     lastRoute.current = routeKey;
   }, [routeKey, loaded]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (!state) {
-    return (
-      <div className="connecting">
-        Connecting to the backend on port 8000. Start it with <code>uvicorn app.main:app --port 8000</code> in
-        the backend folder.
-      </div>
-    );
-  }
-
-  const warnTips = companion?.coaching.filter((t) => t.severity === "warn").length ?? 0;
-  const badges = {
-    trip: state.route ? (state.route_projection?.at_risk ? { kind: "bad", text: "at risk" } : { kind: "info", text: "active" }) : null,
-    ownership: warnTips ? { kind: "warn", text: String(warnTips) } : null,
+  const alert = {
+    navigate: Boolean(state?.route_projection?.at_risk),
+    insights: (companion?.coaching ?? []).some((t) => t.severity === "warn"),
   };
+  const props = { state, live, network, companion, explain, go: setTab };
 
   return (
-    <div className="app">
-      <AssistantPanel live={live} health={health} />
-      <main className="main">
-        <VehicleHeader state={state} health={health} connected={live.connected} />
-        <section className="panel tabs-panel">
-          <TabBar tab={tab} onChange={setTab} badges={badges} />
-          {/* Only the active tab is mounted: the map and charts need a visible container to size themselves */}
-          <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`}>
-            {tab === "trip" && <TripTab state={state} network={network} />}
-            {tab === "battery" && <VehicleStatePanel state={state} companion={companion} explain={explain} />}
-            {tab === "ownership" && <CompanionPanel companion={companion} />}
-            {tab === "simulator" && <SimControls state={state} network={network} />}
-          </div>
-        </section>
-      </main>
+    <div className="stage">
+      <div className="device">
+        <div className="app-screen">
+          {!state ? (
+            <div className="connecting" role="status">
+              <span className="spinner" aria-hidden="true" />
+              <p>Connecting to your car…</p>
+            </div>
+          ) : (
+            <>
+              <main className="screen" key={tab}>
+                {tab === "home" && <Home {...props} />}
+                {tab === "navigate" && <Navigate {...props} />}
+                {tab === "volt" && <Volt {...props} />}
+                {tab === "battery" && <Battery {...props} />}
+                {tab === "insights" && <Insights {...props} />}
+              </main>
+              {toast && (
+                <button className={`toast ${toast.role}`} onClick={() => { closeToast(); setTab("volt"); }}>
+                  <b>{toast.role === "nudge" ? "Volt suggests" : "Volt"}</b>
+                  <span>{toast.text}</span>
+                </button>
+              )}
+              <BottomNav tab={tab} onChange={setTab} alert={alert} />
+            </>
+          )}
+        </div>
+      </div>
+      <SimDock state={state} network={network} health={health} connected={live.connected} messages={messages} />
     </div>
   );
 }
