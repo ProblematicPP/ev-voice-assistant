@@ -109,3 +109,17 @@ def test_rule_based_fallback_end_to_end(reachable, text, tool, guard):
     call = out["tool_calls"][0]
     assert call["name"] == tool and call["ok"] and call["guard"] == guard
     assert out["reply"] and "Sorry" not in out["reply"]
+
+
+@pytest.mark.parametrize("text,llm_tool,expected", [
+    ("Take me to Mysuru", "check_range_to", "navigate_to"),
+    ("take me to the nearest McD", "list_chargers", "navigate_to"),
+    ("Will I make it to Mysore without stopping?", "check_range_to", "check_range_to"),   # a question stays a question
+])
+def test_clear_command_overrides_llm_lookup(text, llm_tool, expected):
+    ctx = AppContext()
+    pipe = AssistantPipeline(ctx)
+    pipe.llm = FakeLLM({"role": "assistant", "content": "", "tool_calls": [
+        {"function": {"name": llm_tool, "arguments": {"destination": "Mysuru"}}}]})
+    out = run(pipe, text)
+    assert out["tool_calls"][0]["name"] == expected

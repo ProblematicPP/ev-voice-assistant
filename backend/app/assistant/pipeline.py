@@ -20,6 +20,8 @@ from app.assistant.tools import TOOL_NAMES, TOOLS
 
 log = logging.getLogger("assistant")
 MAX_TOOL_CALLS = 3
+COMMAND_TOOLS = {"navigate_to", "add_stop", "cancel_navigation"}
+LOOKUP_TOOLS = {"check_range_to", "list_chargers", "get_battery_status"}
 
 
 class AssistantPipeline:
@@ -120,6 +122,17 @@ class AssistantPipeline:
                 msg = {"role": "assistant", "content": "", "tool_calls": calls}
             else:
                 return responder.clean(msg.get("content")) or "Sorry, could you repeat that?", []
+        else:
+            # Second safety net: a small model sometimes answers a clear command ("take me to Mysuru")
+            # with a lookup (range check, charger list). When the rule parser reads an unambiguous
+            # command and the model only chose read-only tools, the command wins.
+            intent = fallback_parser.parse(text, st.pending_offer is not None, st.driving)
+            if (intent and intent[0] in COMMAND_TOOLS
+                    and all(c["function"]["name"] in LOOKUP_TOOLS for c in calls)):
+                log.info("LLM chose %s for a %s command; using the command", [c["function"]["name"] for c in calls],
+                         intent[0])
+                calls = [{"function": {"name": intent[0], "arguments": intent[1]}}]
+                msg = {"role": "assistant", "content": "", "tool_calls": calls}
 
         results = []
         for c in calls[:MAX_TOOL_CALLS]:
