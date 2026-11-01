@@ -5,7 +5,8 @@ import pandas as pd
 
 from app import simulation
 from app.battery_core.core import BatteryCore
-from app.companion import coaching, cost, resale
+from app import telemetry
+from app.companion import coaching, cost, eco, resale
 from app.config import DATA_DIR, VEHICLE
 from app.inputs import Inputs
 from app.routing.network import RoadNetwork
@@ -18,6 +19,8 @@ class AppContext:
         self.battery = BatteryCore()
         self.net = RoadNetwork()
         self.inputs = Inputs()
+        self.telemetry = telemetry.SimulatedCanBus()      # stands in for the OBD-II/CAN dongle (telemetry.ObdDongle)
+        self._telemetry_history = None
         self.planner = RoutePlanner(self.net, self.battery, self.inputs)
         self.sessions_hist = pd.read_csv(DATA_DIR / "charging_history.csv")
         self.trips = pd.read_csv(DATA_DIR / "owner_trips.csv")
@@ -44,6 +47,22 @@ class AppContext:
         s = s[s.start > s.start.max() - pd.Timedelta(days=days)]
         return float((s.charger_type == "dc_fast").mean()) if len(s) else 0.0
 
+    def telemetry_history(self) -> dict:
+        """Harsh-event summary over the owner's past trips, replayed through the simulated CAN logger."""
+        if self._telemetry_history is None:
+            events, km = [], 0.0
+            for i, t in enumerate(self.trips.itertuples()):
+                cond = {"driving_style": t.driving_style, "ambient_temp_c": t.ambient_temp_c}
+                f = self.telemetry.frames(t.distance_km, cond, t.soc_start, t.highway_share, seed=i)
+                events += telemetry.detect_events(f)
+                km += t.distance_km
+            self._telemetry_history = telemetry.summarize(events, km)
+        return self._telemetry_history
+
+    def eco(self) -> dict:
+        recent = (self.state.telemetry or {}).get("drive")
+        return eco.coach(self.battery, self.state, self.telemetry_history(), recent)
+
     # -- companion app ----------------------------------------------------------
     def companion(self) -> dict:
         soh = self.battery.soh()
@@ -55,6 +74,7 @@ class AppContext:
             "charging_summary": coaching.summary(sessions),
             "cost": cost.cost_per_km(sessions, self.trips),
             "resale": resale.estimate(self.battery, self.recent_fast_share()),
+            "eco": self.eco(),
         }
 
     # -- UI snapshot ------------------------------------------------------------

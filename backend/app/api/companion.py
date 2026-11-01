@@ -13,3 +13,15 @@ def companion():
 @router.get("/coaching")
 def coaching():
     return get_ctx().companion()["coaching"]
+
+
+@router.get("/eco")
+def eco():
+    return get_ctx().eco()
+
+
+@router.get("/telemetry")
+def telemetry():
+    """Latest simulated CAN frames and harsh events (the OBD-II dongle is a stub)."""
+    ctx = get_ctx()
+    return {"source": ctx.telemetry.source, **(ctx.state.telemetry or {"frames": [], "events": [], "drive": None})}

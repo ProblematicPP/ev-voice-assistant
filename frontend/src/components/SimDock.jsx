@@ -40,6 +40,10 @@ export default function SimDock({ state, network, health, connected, messages })
             </dd>
             <dt>Traffic</dt><dd>Simulated rush hours (adds to ETA)</dd>
             <dt>Chargers</dt><dd>Simulated queues and outages</dd>
+            <dt>Telemetry</dt>
+            <dd>{state?.vehicle?.telemetry
+              ? `Simulated CAN bus: last drive ${state.vehicle.telemetry.drive.km} km, ${state.vehicle.telemetry.drive.harsh_brakes} harsh brakes, ${state.vehicle.telemetry.drive.harsh_accels} hard starts`
+              : "Simulated CAN bus (OBD-II dongle is a stub). Drive forward to log frames."}</dd>
           </dl>
 
           {lastReply?.tools?.length > 0 && (

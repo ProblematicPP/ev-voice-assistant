@@ -62,6 +62,9 @@ TOOLS = [
         "The user answered yes/no to the assistant's pending suggestion (e.g. 'yes', 'sure', 'do it', 'no thanks').",
         {"accept": B}, ["accept"]),
     _fn("get_charging_coaching", "Feedback and tips on the owner's charging habits."),
+    _fn("get_eco_driving_coaching",
+        "Feedback on DRIVING style from vehicle telemetry: harsh braking / acceleration per 100 km and how "
+        "much range smoother driving would add. Use for 'how is my driving', 'am I braking too hard', eco-driving."),
     _fn("get_cost_and_resale", "Running cost per km, savings vs petrol, and battery-driven resale value."),
 ]
 

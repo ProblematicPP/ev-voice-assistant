@@ -403,6 +403,10 @@ button.card:hover { border-color: color-mix(in srgb, var(--brand) 45%, var(--lin
 .compare .vs strong { color: var(--ink-3); }
 .compare p { grid-column: 1 / -1; margin: 10px 0 0; padding-top: 10px; border-top: 1px solid var(--grid); font-size: 15px; }
 
+.drive-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 10px; }
+.drive-stats div { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; }
+.drive-stats strong { display: block; font-size: 21px; font-weight: 600; }
+.drive-stats small { font-size: 12px; color: var(--ink-2); }
 .tips { display: grid; gap: 8px; }
 .tip { background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--ink-3); border-radius: 12px; padding: 12px 14px; }
 .tip.warn { border-left-color: var(--warn); }

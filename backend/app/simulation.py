@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
+from app import telemetry
 from app.battery_core.range_model import usable_kwh
 from app.config import HARD_MIN_SOC, RESERVE_SOC, VEHICLE
 
@@ -40,7 +41,25 @@ def charge_now(ctx, target_soc: float) -> dict:
 
 
 def drive(ctx, km: float) -> list[str]:
-    """Advance the simulated car by `km`. Returns human-readable events."""
+    """Advance the simulated car by `km`, logging CAN telemetry for the stretch. Returns readable events."""
+    st = ctx.state
+    soc0, odo0 = st.soc, st.odometer_km
+    events = _move(ctx, km)
+    driven = st.odometer_km - odo0
+    if driven > 0.05:
+        frames = ctx.telemetry.frames(driven, ctx.battery.conditions(st), soc0,
+                                      highway_share=0.6 if st.active_plan else 0.0, seed=int(odo0 * 10))
+        found = telemetry.detect_events(frames)
+        st.telemetry = {"source": frames["source"], "frames": telemetry.downsample(frames),
+                        "drive": telemetry.summarize(found, driven),
+                        "events": ((st.telemetry or {}).get("events", []) + found)[-50:]}
+        brakes = sum(e["type"] == "harsh_brake" for e in found)
+        if brakes:
+            events.append(f"Telemetry: {brakes} harsh brake{'s' if brakes > 1 else ''} in the last {driven:.0f} km.")
+    return events
+
+
+def _move(ctx, km: float) -> list[str]:
     st, net, bat = ctx.state, ctx.net, ctx.battery
     cond = bat.conditions(st)
     usable = usable_kwh(cond["soh"])

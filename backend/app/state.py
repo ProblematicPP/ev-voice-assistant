@@ -17,6 +17,7 @@ class VehicleState:
     precooling: bool = False
     odometer_km: float = 0.0
     weather: dict | None = None          # last live-weather reading applied, if any
+    telemetry: dict | None = None        # CAN frames + harsh events from the latest simulated drive
 
     active_plan: dict | None = None
     # leg index, node index within that leg's path, waypoints reached so far

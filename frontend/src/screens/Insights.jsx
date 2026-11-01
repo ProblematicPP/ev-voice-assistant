@@ -11,7 +11,7 @@ export default function Insights({ companion }) {
       </div>
     );
   }
-  const { coaching, cost, resale } = companion;
+  const { coaching, cost, resale, eco } = companion;
   return (
     <div className="scroll">
       <header className="app-bar"><div><h1>Insights</h1><p>Last {cost.window_days} days</p></div></header>
@@ -28,6 +28,22 @@ export default function Insights({ companion }) {
           <small>per km</small>
         </div>
         <p>You save about <b>{inr(cost.monthly_saving_vs_petrol_inr)}</b> a month.</p>
+      </section>
+
+      <section className="block">
+        <h2 className="section-title">Your driving</h2>
+        <div className="drive-stats">
+          <div><strong className="num">{eco.history.harsh_brakes_per_100km}</strong><small>harsh brakes per 100 km</small></div>
+          <div><strong className="num">{eco.history.harsh_accels_per_100km}</strong><small>hard starts per 100 km</small></div>
+          <div><strong className="num">+{Math.round(eco.range_gain_km)} km</strong><small>if you drove smoothly</small></div>
+        </div>
+        <p className="block-sub">From {Math.round(eco.history.km).toLocaleString("en-IN")} km of driving. A smooth
+          driver has about {eco.typical_events_per_100km} harsh events per 100 km.</p>
+        <div className="tips">
+          {eco.tips.filter((t) => t.id !== "smooth_gain").map((t) => (
+            <div key={t.id} className={`tip ${t.severity}`}><b>{t.title}</b><p>{t.message}</p></div>
+          ))}
+        </div>
       </section>
 
       <section className="block">

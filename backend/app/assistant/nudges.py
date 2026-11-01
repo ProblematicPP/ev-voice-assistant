@@ -67,7 +67,17 @@ def _rules(ctx):
             None,
         ))
 
-    # 5. Charging habits
+    # 5. Harsh driving on the drive just logged (telemetry)
+    drive = (st.telemetry or {}).get("drive")
+    if drive and drive["harsh_brakes"] >= 2:
+        out.append((
+            f"eco:{round(st.odometer_km)}",
+            f"{drive['harsh_brakes']} harsh brakes in the last {drive['km']:.0f} km. Braking earlier lets "
+            f"regenerative braking put that energy back in the battery.",
+            None,
+        ))
+
+    # 6. Charging habits
     tips = [t for t in coaching.coach(ctx.sessions()) if t["id"] == "fast_charge_frequency"]
     if tips and st.plugged_in:
         out.append(("coach_fast", tips[0]["message"], None))

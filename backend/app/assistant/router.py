@@ -438,6 +438,22 @@ class ToolRouter:
         say = " ".join(t["message"] for t in tips[:2])
         return result("get_charging_coaching", {}, True, say, {"tips": [t["message"] for t in tips]})
 
+    def t_get_eco_driving_coaching(self):
+        e = self.ctx.eco()
+        h = e["history"]
+        say = (f"You average {h['harsh_brakes_per_100km']:.1f} harsh brakes and {h['harsh_accels_per_100km']:.1f} hard "
+               f"accelerations per 100 km, about {e['events_vs_typical']:.0f} times a smooth driver. ")
+        if e["range_gain_km"] >= 1:
+            say += (f"Braking earlier so regen can recover energy, and pulling away gently, would add about "
+                    f"{e['range_gain_km']:.0f} km at today's charge.")
+        else:
+            say += e["tips"][-1]["message"]
+        facts = {"harsh_brakes_per_100km": h["harsh_brakes_per_100km"],
+                 "harsh_accels_per_100km": h["harsh_accels_per_100km"], "km_analysed": h["km"],
+                 "times_typical_driver": e["events_vs_typical"], "range_gain_if_smoother_km": e["range_gain_km"],
+                 "last_drive": e["recent_drive"], "tips": [t["message"] for t in e["tips"]]}
+        return result("get_eco_driving_coaching", {}, True, say, facts)
+
     def t_get_cost_and_resale(self):
         comp = self.ctx.companion()
         c, r = comp["cost"], comp["resale"]
