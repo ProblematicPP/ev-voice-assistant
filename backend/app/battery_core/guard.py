@@ -1,16 +1,23 @@
-"""Battery guard: every routing / charging / energy-consuming action passes here
-before it executes. The LLM never decides feasibility - this module does.
+"""Battery guard: every action the assistant can take passes through `check()` before it
+executes. The LLM never decides feasibility - this module does.
 
-Each check returns a GuardDecision:
-  allow    - may the action execute?
-  status   - machine-readable verdict
-  reasons  - human-readable facts behind the verdict
+`check(action, **context)` is the single entry point. It returns a GuardDecision:
+  verdict        - "allow" | "modify" | "refuse"
+                   (modify = allowed only with a change the guard made, e.g. a charging stop)
+  allow          - may the action execute? (False only for "refuse")
+  status         - machine-readable detail, e.g. "ok_with_charge_stop", "blocked_low_soc"
+  reasons        - human-readable facts behind the verdict
+  proposed_stop  - the charging stop that makes it work, when there is one
+
+The assess_* functions below are the per-action rules `check()` dispatches to.
 """
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
 
 from app.config import COMFORT_SOC, DC_TARGET_SOC, HARD_MIN_SOC, RESERVE_SOC
+
+MODIFY_STATUSES = {"ok_with_charge_stop"}
 
 
 @dataclass
@@ -19,9 +26,21 @@ class GuardDecision:
     status: str
     reasons: list[str] = field(default_factory=list)
     data: dict = field(default_factory=dict)
+    action: str = ""
+    proposed_stop: dict | None = None
+
+    @property
+    def verdict(self) -> str:
+        if not self.allow:
+            return "refuse"
+        return "modify" if self.status in MODIFY_STATUSES else "allow"
+
+    @property
+    def reason(self) -> str:
+        return " ".join(self.reasons)
 
     def to_dict(self):
-        return asdict(self)
+        return {**asdict(self), "verdict": self.verdict, "reason": self.reason}
 
 
 def pct(x: float) -> str:
@@ -101,3 +120,50 @@ def assess_charge_target(target_soc: float, charger_kind: str) -> GuardDecision:
         return GuardDecision(True, "ok_with_advice",
                              [f"Above {pct(DC_TARGET_SOC)} DC charging slows sharply and adds heat stress."])
     return GuardDecision(True, "ok", [])
+
+
+# -- single entry point ----------------------------------------------------------
+ROUTE_ACTIONS = {"navigate", "add_stop", "detour", "change_destination"}
+
+
+def _stop_summary(plan: dict, decision: GuardDecision) -> dict | None:
+    if plan.get("stops"):
+        s = plan["stops"][0]
+        return {"name": s["name"], "node": s["node"], "arrive_soc": s["arrive_soc"], "depart_soc": s["depart_soc"],
+                "charge_min": s["charge_min"], "cost_inr": s["cost_inr"]}
+    alts = decision.data.get("reachable_chargers") or []
+    if alts:
+        a = alts[0]
+        return {"name": a["name"], "node": a["node"], "arrive_soc": a["arrive_soc"], "distance_km": a["distance_km"]}
+    return None
+
+
+def check(action: str, **ctx) -> GuardDecision:
+    """Judge one requested action against live battery state. Every executing tool calls this.
+
+    action                         context
+    navigate / add_stop / detour   plan (planner output); direct=True, explicit=bool for no-charging routes
+    climate                        range_before_km, range_after_km, soc
+    precool                        plugged_in, soc, kwh_needed, usable_kwh
+    charge                         target_soc, charger_kind
+    cancel_route, vehicle_feature  nothing - no battery impact, recorded for the audit trail
+    no_change                      nothing - the request needs no action (e.g. already there)
+    """
+    if action in ROUTE_ACTIONS:
+        plan = ctx["plan"]
+        d = assess_direct(plan, ctx.get("explicit", False)) if ctx.get("direct") else assess_plan(plan)
+        d.proposed_stop = _stop_summary(plan, d) if d.verdict != "allow" else None
+    elif action == "climate":
+        d = assess_climate_change(ctx["range_before_km"], ctx["range_after_km"], ctx["soc"])
+    elif action == "precool":
+        d = assess_precool(ctx["plugged_in"], ctx["soc"], ctx["kwh_needed"], ctx["usable_kwh"])
+    elif action == "charge":
+        d = assess_charge_target(ctx["target_soc"], ctx["charger_kind"])
+    elif action in ("cancel_route", "vehicle_feature"):
+        d = GuardDecision(True, "ok", ["No battery impact."])
+    elif action == "no_change":
+        d = GuardDecision(True, "ok", ["Nothing to change."])
+    else:
+        raise ValueError(f"guard has no rule for action '{action}'")
+    d.action = action
+    return d

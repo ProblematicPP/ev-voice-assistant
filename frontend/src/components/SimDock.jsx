@@ -34,7 +34,7 @@ export default function SimDock({ state, network, health, connected, messages })
                   <li key={i}>
                     <code>{t.name}</code>
                     <span>{Object.entries(t.args ?? {}).filter(([, v]) => v !== false && v !== "").map(([k, v]) => `${k}=${v}`).join(", ")}</span>
-                    {t.guard && <span className={`guard ${t.ok ? "ok" : "bad"}`}>guard: {t.guard}</span>}
+                    {t.guard && <span className={`guard ${t.ok ? "ok" : "bad"}`}>guard: {t.verdict ?? ""} ({t.guard})</span>}
                   </li>
                 ))}
                 <li className="faint">Parsed by {lastReply.source === "llm" ? "the LLM" : "the rule-based parser"}</li>

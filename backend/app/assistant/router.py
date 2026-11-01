@@ -31,6 +31,11 @@ def result(tool, args, ok, say, facts=None, decision=None, route_changed=False):
             "guard": decision.to_dict() if decision else None, "route_changed": route_changed}
 
 
+# Tools that change the vehicle or route. Each must return a battery-guard verdict.
+ACTION_TOOLS = {"navigate_to", "add_stop", "cancel_navigation", "start_charging", "set_climate",
+                "precool_cabin", "assisted_driving"}
+
+
 class ToolRouter:
     def __init__(self, ctx):
         self.ctx = ctx
@@ -42,7 +47,11 @@ class ToolRouter:
         # LLMs sometimes invent extra arguments - keep only the ones the handler accepts
         accepted = inspect.signature(handler).parameters
         args = {k: v for k, v in (args or {}).items() if v is not None and k in accepted}
-        return handler(**args)
+        out = handler(**args)
+        if name in ACTION_TOOLS and out["ok"] and out.get("guard") is None:
+            # An action that changed the car without a guard verdict is a bug, never a reply
+            raise RuntimeError(f"{name} executed without a battery-guard check")
+        return out
 
     # -- helpers ---------------------------------------------------------------
     @property
@@ -132,7 +141,7 @@ class ToolRouter:
                           f"I couldn't find '{destination}' on the map. Try a place like Mysuru, Whitefield or the airport.")
         if target["node"] == self.st.location:
             return result("navigate_to", args, True, f"You're already at {target['name']}.",
-                          {"destination": target["name"], "distance_km": 0})
+                          {"destination": target["name"], "distance_km": 0}, guard.check("no_change"))
 
         cond = self._cond()
         if not via_charger:
@@ -154,7 +163,7 @@ class ToolRouter:
         diff = replanner.diff(old, plan)
         if target["kind"] != "node":
             plan["destination_names"][-1] = target["name"]
-        decision = guard.assess_plan(plan)
+        decision = guard.check("navigate", plan=plan)
         if not decision.allow:
             alts = decision.data.get("reachable_chargers") or []
             if alts:
@@ -189,7 +198,7 @@ class ToolRouter:
         if target["kind"] != "node":
             plan["destination_names"][-1] = target["name"]
         dest = plan["destination_names"][-1]
-        decision = guard.assess_direct(plan, explicit)
+        decision = guard.check("navigate", plan=plan, direct=True, explicit=explicit)
 
         if not decision.allow:
             if not explicit:
@@ -257,7 +266,7 @@ class ToolRouter:
             arr2 = self.st.soc - planner.path_profile(self.st.location, target["node"], e2)["energy_kwh"] / bat.usable_kwh()
             facts["arrival_with_climate_off"] = _pct(max(arr2, 0))
         plan = planner.plan(self.st.location, [target["node"]], self.st.soc, cond)
-        decision = guard.assess_plan(plan)
+        decision = guard.check("navigate", plan=plan)
         if arrive <= 0:
             reach_km = prof["distance_km"] * self.st.soc / (self.st.soc - arrive)
             facts["would_run_out_km_short"] = round(prof["distance_km"] - reach_km)
@@ -286,7 +295,7 @@ class ToolRouter:
         old_eta = self.st.active_plan["totals"].get("total_min", 0)
         plan, diff = replanner.replan_with_stop(self.ctx.planner, self.st, self._cond(), target["node"])
         plan["destination_names"][-2 if len(plan["destination_names"]) > 1 else -1] = target["name"]
-        decision = guard.assess_plan(plan)
+        decision = guard.check("add_stop", plan=plan)
         facts = self._plan_facts(plan, decision)
         facts["added_stop"] = target["name"]
         facts["change"] = diff
@@ -303,13 +312,15 @@ class ToolRouter:
         return result("add_stop", args, True, say, facts, decision, True)
 
     def t_cancel_navigation(self):
+        decision = guard.check("cancel_route")
         if not self.st.active_plan:
-            return result("cancel_navigation", {}, True, "There's no active route.")
+            return result("cancel_navigation", {}, True, "There's no active route.", decision=decision)
         dest = self.st.active_plan["destination_names"][-1]
         self.st.active_plan = None
         self.st.progress = {"leg": 0, "node": 0, "waypoints_done": 0}
         self.st.log("route", f"Navigation to {dest} cancelled")
-        return result("cancel_navigation", {}, True, f"Navigation to {dest} cancelled.", route_changed=True)
+        return result("cancel_navigation", {}, True, f"Navigation to {dest} cancelled.", decision=decision,
+                      route_changed=True)
 
     # -- battery ---------------------------------------------------------------
     def t_get_battery_status(self):
@@ -359,7 +370,7 @@ class ToolRouter:
             return result("start_charging", {"target_percent": target_percent}, False,
                           f"There's no charger at {self.ctx.net.name(self.st.location)}.")
         ch = max(chargers, key=lambda c: c["power_kw"])
-        decision = guard.assess_charge_target(target, ch["kind"])
+        decision = guard.check("charge", target_soc=target, charger_kind=ch["kind"])
         out = simulation.charge_now(self.ctx, target)
         say = f"Charged at {out['charger']} from {_pct(out['from'])} to {_pct(out['to'])}."
         if decision.status == "ok_with_advice":
@@ -375,7 +386,7 @@ class ToolRouter:
         prev = self.st.hvac_mode
         self.st.hvac_mode = mode
         after = self.ctx.battery.range_km(self.st)
-        decision = guard.assess_climate_change(before, after, self.st.soc)
+        decision = guard.check("climate", range_before_km=before, range_after_km=after, soc=self.st.soc)
         if not decision.allow:
             self.st.hvac_mode = prev
             return result("set_climate", {"mode": mode}, False,
@@ -390,7 +401,8 @@ class ToolRouter:
         bat = self.ctx.battery
         kw = bat.hvac_kw("ac", self.st.ambient_temp_c)
         stub = precooling.plan(int(minutes), float(target_c), self.st.ambient_temp_c, self.st.plugged_in, kw)
-        decision = guard.assess_precool(self.st.plugged_in, self.st.soc, stub["energy_kwh"], bat.usable_kwh())
+        decision = guard.check("precool", plugged_in=self.st.plugged_in, soc=self.st.soc,
+                                kwh_needed=stub["energy_kwh"], usable_kwh=bat.usable_kwh())
         if not decision.allow:
             return result("precool_cabin", {"minutes": minutes}, False, decision.reasons[0], stub, decision)
         self.st.precooling = True
@@ -399,12 +411,13 @@ class ToolRouter:
         return result("precool_cabin", {"minutes": minutes}, True, say, stub, decision)
 
     def t_assisted_driving(self, action: str = "turn_camera", side: str = "left"):
+        decision = guard.check("vehicle_feature")
         out = assisted_driving.trigger(action, side)
         self.st.log("stub", out["would_do"], stub="assisted_driving")
         return result("assisted_driving", {"action": action, "side": side}, True,
                       out["would_do"].replace("Would show", "Showing").replace("Would open", "Opening")
                       .replace("Would engage", "Engaging").replace("Would switch", "Switching")
-                      .replace("Would enable", "Enabling"), out)
+                      .replace("Would enable", "Enabling"), out, decision)
 
     # -- offers ------------------------------------------------------------------
     def t_respond_to_offer(self, accept: bool = True):

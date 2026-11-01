@@ -99,7 +99,8 @@ class AssistantPipeline:
             "reply": reply,
             "source": source,
             "tool_calls": [{"name": r["tool"], "args": r["args"], "ok": r["ok"],
-                            "guard": r["guard"]["status"] if r.get("guard") else None} for r in results],
+                            "guard": r["guard"]["status"] if r.get("guard") else None,
+                            "verdict": r["guard"]["verdict"] if r.get("guard") else None} for r in results],
             "route_changed": any(r.get("route_changed") for r in results),
             "results": results,
         }

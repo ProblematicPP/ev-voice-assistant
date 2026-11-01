@@ -31,4 +31,4 @@ def plan(req: PlanRequest):
         nodes.append(t["node"])
     soc = req.soc if req.soc is not None else ctx.state.soc
     p = ctx.planner.plan(origin, nodes, soc, ctx.battery.conditions(ctx.state))
-    return {"plan": p, "guard": guard.assess_plan(p).to_dict()}
+    return {"plan": p, "guard": guard.check("navigate", plan=p).to_dict()}
