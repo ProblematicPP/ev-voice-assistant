@@ -72,3 +72,40 @@ def test_navigate_with_stop_on_the_way():
     assert out["tool_calls"][0]["ok"]
     assert len(plan["destinations"]) == 2 and "McDonald" in plan["destination_names"][0]
     assert len(plan["destination_coords"]) == 2      # the map draws a marker for the stop
+
+
+class DownLLM:
+    """Ollama not running (available() is False) or failing mid-request (chat raises)."""
+
+    def __init__(self, reachable=False):
+        self.reachable, self.marked = reachable, False
+
+    async def available(self):
+        return self.reachable and not self.marked
+
+    def mark_unavailable(self):
+        self.marked = True
+
+    async def chat(self, *a, **k):
+        raise ConnectionError("model crashed")
+
+
+import pytest  # noqa: E402
+
+
+@pytest.mark.parametrize("reachable", [False, True], ids=["ollama-down", "ollama-crashes"])
+@pytest.mark.parametrize("text,tool,guard", [
+    ("Will I make it to Mysore without stopping?", "check_range_to", "ok_with_charge_stop"),
+    ("take me to the nearest McD", "navigate_to", "ok"),
+    ("why is my range lower than usual", "explain_range", None),
+    ("how are my charging habits", "get_charging_coaching", None),
+])
+def test_rule_based_fallback_end_to_end(reachable, text, tool, guard):
+    ctx = AppContext()
+    pipe = AssistantPipeline(ctx)
+    pipe.llm = DownLLM(reachable)
+    out = run(pipe, text)
+    assert out["source"] == "fallback"
+    call = out["tool_calls"][0]
+    assert call["name"] == tool and call["ok"] and call["guard"] == guard
+    assert out["reply"] and "Sorry" not in out["reply"]
