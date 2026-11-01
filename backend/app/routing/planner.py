@@ -176,9 +176,10 @@ class RoutePlanner:
 
     # -- multi-waypoint plan --------------------------------------------------
     def plan(self, origin: int, destinations: list[int], soc: float, cond: dict,
-             min_final_soc: float = RESERVE_SOC, exclude=frozenset()) -> dict:
+             min_final_soc: float = RESERVE_SOC, exclude=frozenset(), _boost: dict | None = None) -> dict:
         usable = self.battery.usable_kwh()
         energy = self.battery.edge_energy_kwh(self.net, cond)
+        boost = dict(_boost or {})      # waypoint index -> raised arrival SOC (see retry below)
         all_legs, all_stops, cur, cur_soc = [], [], origin, soc
         for i, dest in enumerate(destinations):
             final = i == len(destinations) - 1
@@ -189,8 +190,18 @@ class RoutePlanner:
                 if ch:
                     p = self.path_profile(dest, ch["node"], energy)
                     min_arr = max(RESERVE_SOC, p["energy_kwh"] / usable + HARD_MIN_SOC)
+            min_arr = max(min_arr, boost.get(i, 0.0))
             leg = self.plan_leg(cur, dest, cur_soc, cond, min_arr, exclude)
             if leg is None:
+                # Legs are planned one at a time and the last charge is trimmed, so a waypoint can be
+                # reached with too little for the next stretch when that stretch has no charger
+                # (e.g. a McDonald's near Maddur on the way to Mysuru). Retry with the previous leg
+                # arriving with enough to drive this one direct.
+                if i > 0 and (i - 1) not in boost:
+                    need = self.path_profile(destinations[i - 1], dest, energy)["energy_kwh"] / usable + min_arr
+                    if need <= 1.0:
+                        boost[i - 1] = need
+                        return self.plan(origin, destinations, soc, cond, min_final_soc, exclude, boost)
                 return self._infeasible(origin, destinations, soc, cond, failed_at=dest, legs=all_legs)
             for lg in leg["legs"]:
                 lg["waypoint_index"] = i

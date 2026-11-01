@@ -158,3 +158,15 @@ def test_audio_decode_is_capped():
         w.setnchannels(1); w.setsampwidth(2); w.setframerate(16000)
         w.writeframes(np.zeros(16000 * 60, dtype=np.int16).tobytes())
     assert len(decode_16k_mono(buf.getvalue())) == MAX_AUDIO_SECONDS * 16000
+
+
+def test_detour_on_trip_that_needs_charging(ctx):
+    """Regression: at 46% the Mysuru trip needs a charge; a McDonald's on the way used to make it infeasible."""
+    from app.assistant.router import ToolRouter
+    r = ToolRouter(ctx)
+    assert r.execute("navigate_to", {"destination": "Mysuru"})["ok"]
+    assert ctx.state.active_plan["stops"]
+    res = r.execute("add_stop", {"place": "McDonald's"})
+    assert res["ok"], res["say"]
+    plan = ctx.state.active_plan
+    assert len(plan["destinations"]) == 2 and plan["totals"]["arrival_soc"] >= RESERVE_SOC - 1e-6
