@@ -66,7 +66,9 @@ class BatteryCore:
         share = self.profile["highway_share"] if highway_share is None else highway_share
         out = self.range_model.range_breakdown(state.soc, self.conditions(state), share)
         out["soc_pct"] = round(state.soc * 100, 1)
-        out["model"] = {"type": "PyTorch MLP (Wh/km)", **self.range_model.metrics}
+        kind = "personal (fine-tuned on owner trips)" if self.range_model.personalized else "fleet"
+        out["model"] = {"type": f"PyTorch MLP (Wh/km), {kind}", "mae": self.range_model.metrics.get("mae"),
+                        "mape": self.range_model.metrics.get("mape")}
         return out
 
     def range_km(self, state, highway_share: float | None = None, floor_soc: float = 0.0) -> float:

@@ -23,7 +23,8 @@ RAW_FEATURES = ["ambient_temp_c", "hvac_mode", "driving_style", "avg_speed_kmh",
 NUMERIC = ["ambient_temp_c", "driving_style", "avg_speed_kmh", "gradient_m_per_km", "payload_kg", "soh"]
 ENCODED_FEATURES = NUMERIC + [f"hvac_{m}" for m in HVAC_MODES] + [f"road_{r}" for r in ROAD_TYPES]
 
-MODEL_PATH = MODELS_DIR / "range_model.pt"
+FLEET_MODEL_PATH = MODELS_DIR / "range_model.pt"          # trained on many vehicles
+OWNER_MODEL_PATH = MODELS_DIR / "range_model_owner.pt"    # fleet weights fine-tuned on this owner's trips
 
 # Speeds used to represent "typical" city / highway segments
 CITY_SPEED, HIGHWAY_SPEED = 26.0, 75.0
@@ -41,7 +42,10 @@ def usable_kwh(soh: float) -> float:
 
 
 class RangeModel:
-    def __init__(self, path=MODEL_PATH):
+    def __init__(self, path=None):
+        """Defaults to the owner's personal model, falling back to the fleet model if not trained yet."""
+        path = path or (OWNER_MODEL_PATH if OWNER_MODEL_PATH.exists() else FLEET_MODEL_PATH)
+        self.personalized = path == OWNER_MODEL_PATH
         self.reg = TabularRegressor.load(path)
         self.metrics = getattr(self.reg, "metrics", {})
 

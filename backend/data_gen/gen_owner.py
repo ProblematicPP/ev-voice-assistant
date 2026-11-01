@@ -44,9 +44,16 @@ LONG_TRIPS = [("Mysuru weekend", 145, 0.85, "mysuru"), ("Airport drop", 38, 0.6,
               ("Nandi Hills", 62, 0.6, "chikkaballapur"), ("Tumakuru visit", 72, 0.75, "tumakuru")]
 
 
+# This particular car differs from the fleet average in ways the fleet model can't know:
+# a roof carrier and soft tyres cost ~10% on the highway, while the owner's heavy use of
+# regenerative braking saves ~5% in town. The personalised range model learns this from trips.
+VEHICLE_QUIRK = {"city": 0.95, "highway": 1.10}
+
+
 def _trip_energy(rng, km, hwy_share, temp, hvac, style, soh, payload=75):
     city = wh_per_km(temp, hvac, style, rng.uniform(18, 30), rng.normal(0, 1.5), payload, "city", soh, rng=rng)
     hwy = wh_per_km(temp, hvac, style, rng.uniform(65, 90), rng.normal(0, 1.5), payload, "highway", soh, rng=rng)
+    city, hwy = city * VEHICLE_QUIRK["city"], hwy * VEHICLE_QUIRK["highway"]
     whkm = float((1 - hwy_share) * city + hwy_share * hwy)
     return whkm, whkm * km / 1000
 
@@ -110,7 +117,7 @@ def simulate_owner(seed=21, soh=0.90, end_day: date | None = None):
             "label": label, "destination": dest, "distance_km": round(km, 1),
             "highway_share": hwy_share, "ambient_temp_c": round(temp, 1), "hvac_mode": hvac,
             "driving_style": round(style, 3), "wh_per_km": round(whkm, 1), "energy_kwh": round(kwh, 2),
-            "soc_start": round(soc_start, 3), "soc_end": round(soc, 3),
+            "soc_start": round(soc_start, 3), "soc_end": round(soc, 3), "soh": soh,
         })
 
     for d in range(DAYS):

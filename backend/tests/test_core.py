@@ -170,3 +170,12 @@ def test_detour_on_trip_that_needs_charging(ctx):
     assert res["ok"], res["say"]
     plan = ctx.state.active_plan
     assert len(plan["destinations"]) == 2 and plan["totals"]["arrival_soc"] >= RESERVE_SOC - 1e-6
+
+
+def test_range_model_is_personalised_from_owner_trips(ctx):
+    rm = ctx.battery.range_model
+    assert rm.personalized, "core should use the model fine-tuned on the owner's own trips"
+    m = rm.metrics
+    assert m["mae"] < m["fleet_model_on_owner_test"]["mae"]     # beats the fleet model on held-out owner trips
+    r = ctx.battery.range(ctx.state)
+    assert r["naive_km"] > 0 and r["personalized_km"] > 0       # brochure figure exposed for comparison
