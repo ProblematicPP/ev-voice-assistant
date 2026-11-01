@@ -9,7 +9,6 @@ Branch `audit-and-gaps`, 2 Nov 2026.
 - A voice round trip: Piper speaks a question, faster-whisper transcribes it.
 - The frontend production build, plus headless-browser screenshots of every screen.
 - `python -m eval.run_all`.
-- The whole README sequence in a fresh clone (see the end).
 
 A requirement is **DONE** only if one of those runs exercised it.
 
@@ -28,7 +27,7 @@ Status key:
 | 1.1 | One shared battery core, four consumers | PARTIAL | DONE | `battery_core/core.py`, `context.py`, `fleet/` | Assistant, planner, companion and fleet all call `BatteryCore`. `test_only_the_core_owns_soh_and_ageing_logic` fails if any other module imports the SOH, ageing or degradation code. |
 | 1.2 | Inputs: telemetry, charging history, weather & traffic, station data | PARTIAL | DONE | `telemetry.py`, `inputs/`, `data/charging_history.csv`, `routing/network.py` | |
 | 2.1 | OSM Karnataka road graph with chargers | DONE | DONE | `data_gen/osm_fetch.py`, `build_osm_network.py`, `gen_demo_chargers.py` | 39,755 nodes; 37 OSM chargers + 56 seeded demo chargers (6 anchor intercity destinations OSM leaves empty). |
-| 2.2 | Synthetic NASA/CALCE-style cells, trips, owner, charging (and fleet) data, one command | DONE | DONE | `data_gen/generate_all.py` | Re-run from a fresh clone. |
+| 2.2 | Synthetic NASA/CALCE-style cells, trips, owner, charging (and fleet) data, one command | DONE | DONE | `data_gen/generate_all.py` | Every generator was re-run during this work. |
 | 2.3 | Simulated OBD-II/CAN telemetry stream | MISSING | DONE | `telemetry.py` | `TelemetrySource` interface; `ObdDongle` hardware stub raises; `SimulatedCanBus` emits 1 Hz frames. Exposed at `/api/companion/telemetry`. |
 | 2.4 | Weather / traffic / availability behind an interface; live weather allowed | MISSING | DONE | `inputs/__init__.py`, `api/sim.py` | Open-Meteo live weather (no key, offline fallback); simulated rush-hour traffic and charger queues/outages. |
 | 3.1 | SOH MLP, 10 BMS features, split by cell, held-out error | PARTIAL | DONE | `battery_core/soh_model.py`, `training/train_soh.py` | 65/15/20 train/val/test by cell. Test cells: MAE 0.73 %-points SOH, MAPE 0.96% (`eval.run_all`). |
@@ -36,7 +35,7 @@ Status key:
 | 3.3 | RUL / degradation projection for the 2-year resale by habit | PARTIAL | DONE | `battery_core/degradation.py`, `core.rul/project_soh` | Years to 70% SOH. Feeds resale, the Battery screen, the fleet and the charging-habit slider. |
 | 3.4 | Shapley attribution | DONE | DONE | `battery_core/attribution.py` | Exact over 5 factors; a test checks the factors sum to the total. |
 | 3.5 | Battery guard: one function, allow / modify / refuse + reason + proposed stop | PARTIAL | DONE | `battery_core/guard.py` (`check`) | |
-| 3.6 | Weights + scalers saved; inference without retraining | DONE | DONE | `models/*.pt` | Recreated by the train scripts in a fresh clone (`models/` is gitignored). |
+| 3.6 | Weights + scalers saved; inference without retraining | DONE | DONE | `models/*.pt` | `models/` is gitignored; the train scripts recreate it. |
 | 4.1 | OSM routing, energy-aware edge costs | DONE | DONE | `routing/planner.py` | |
 | 4.2 | Stop insertion: health, arrival charge, availability/queue, charge time, ₹ cost | PARTIAL | DONE | `routing/planner.py`, `inputs/` | Queue wait is part of the A* cost; chargers that are out of service are skipped. |
 | 4.3 | Output fields + polyline | DONE | DONE | `planner._summarize` | Also traffic delay and wait time now. |
@@ -60,7 +59,7 @@ Status key:
 | 6.6 | Fleet: allocation, demand model, charging-aware long rentals, rebalancing, longevity metric, UI | MISSING | DONE | `app/fleet/`, `training/train_demand.py`, `api/fleet.py`, `screens/FleetConsole.jsx` | |
 | 7 | One evaluation command → `results/metrics.md` | MISSING | DONE | `backend/eval/run_all.py`, `results/` | |
 | 8.1 | `AUDIT.md` | MISSING | DONE | this file | |
-| 8.2 | Fresh clone runs from the README | PARTIAL | DONE | `README.md`, `run.txt` | See "Fresh-clone check". |
+| 8.2 | Fresh clone runs from the README | PARTIAL | DONE on this laptop | `README.md`, `run.txt` | Every README step (install, generate, train, tests, eval, frontend build) ran on the development laptop. A clean-clone run was skipped at the owner's request (see "Fresh-clone check"). |
 | 8.3 | `DEMO_SCRIPT.md` | MISSING | DONE | `DEMO_SCRIPT.md` | Rehearsed through the API with the LLM and with the rule-based fallback. |
 
 ## What I added
@@ -110,4 +109,6 @@ These are documented in the README.
 
 ## Fresh-clone check
 
-_Filled in below from the clean-clone run._
+Not done. The owner decided that running on the development laptop is enough. A clean-clone run was
+started, got through package installation, and was stopped during data generation. Every README step
+has run successfully on the development laptop, but a brand-new clone has not been tested end to end.
