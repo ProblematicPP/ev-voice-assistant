@@ -44,10 +44,13 @@ Step 5. Check everything is ready (optional)
 
 USING IT
 --------
-   - The app is shown as a phone. Its bottom bar has Home, Navigate (real map +
-     route), Volt (the assistant chat, centre button), Battery and Insights.
-     The app opens Navigate when a route is made. Volt's replies pop up as a
-     notification on the other screens; tap it to open the chat.
+   - The app is shown as a phone. Its bottom bar has Home, Trip (real map +
+     route + range ribbon), Volt (the assistant chat, centre button), Battery
+     and Ownership. The app opens Trip when a route is made. Volt's replies
+     pop up as a notification on the other screens; tap it to open the chat.
+   - The switch at the top changes between the Driver app and the Fleet
+     console (rental fleet: demand heatmap, car moves, battery-aware
+     allocation, battery life). The first Fleet load takes ~6 seconds.
    - The Simulator panel to the right of the phone holds the demo controls and
      system status. It is not part of the app. On a narrow window it sits
      below the phone.
@@ -57,20 +60,15 @@ USING IT
    - Click anywhere on the page once so the browser allows spoken replies.
      The speaker button at the top of the Volt screen mutes the voice.
    - The Simulator panel changes the simulated car: charge, temperature, AC,
-     location, drive forward, and one-click scenarios.
+     driving style, charging habit, location, drive forward, live weather and
+     one-click scenarios.
 
-   Demo script (in this order):
-     1. "Will I make it to Mysore without stopping?"   -> says no, offers a stop
-     2. "Yes"                                         -> route with auto-picked charger
-     3. Simulator: +30 km                             -> car drives along the route
-     4. "I'm hungry, find me a McDonald's on the way" -> mid-drive re-plan
-     5. "Why is my range lower than usual?"           -> range-drop explanation
-     6. Simulator: "Low battery, far from home"       -> proactive nudge, say "yes"
-     7. Scenario "Hot day, plugged in", then "yes"    -> pre-cooling (simulated)
-     8. "Show the left turn camera"                   -> driver assist (simulated)
-     9. "How are my charging habits?"                 -> companion coaching
-    10. Scenario "Road trip, 74% charge", "Take me to Mysuru", +30 km,
-        then set temperature 40 and Climate AC      -> "plan no longer safe" nudge
+   Demo script: see DEMO_SCRIPT.md (exact order, expected results, fallbacks).
+
+   Evaluation numbers for the slides:
+       cd backend
+       .venv\Scripts\python.exe -m eval.run_all
+     prints the table and writes results\metrics.md (~4 minutes).
 
 
 STOPPING IT
@@ -130,6 +128,7 @@ Needs: Windows, internet, Node.js 18+ (nodejs.org), Ollama (ollama.com),
         .venv\Scripts\python.exe -m data_gen.generate_all
         .venv\Scripts\python.exe -m training.train_soh
         .venv\Scripts\python.exe -m training.train_range
+        .venv\Scripts\python.exe -m training.train_demand
 
    4. Download the AI model (~3.3 GB)
         ollama pull qwen3.5:4b
