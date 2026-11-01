@@ -7,6 +7,7 @@ import Volt from "./screens/Volt.jsx";
 import Battery from "./screens/Battery.jsx";
 import Insights from "./screens/Insights.jsx";
 import SimDock from "./components/SimDock.jsx";
+import FleetConsole from "./screens/FleetConsole.jsx";
 
 const TABS = [
   { id: "home", label: "Home", icon: HomeIcon },
@@ -70,7 +71,29 @@ function useReplyToast(messages, tab) {
   return [toast, () => setToast(null)];
 }
 
+/** Top-level view: the driver's phone app (default) or the fleet operator's console (#fleet). */
+function useView() {
+  const [view, setView] = useState(() => (location.hash === "#fleet" ? "fleet" : "app"));
+  const choose = (v) => {
+    setView(v);
+    let screen = "home";
+    try { screen = localStorage.getItem("volt-screen") || "home"; } catch { /* storage blocked */ }
+    history.replaceState(null, "", v === "fleet" ? "#fleet" : `#${screen}`);
+  };
+  return [view, choose];
+}
+
+function ViewSwitch({ view, onChange }) {
+  return (
+    <nav className="view-switch seg" aria-label="View">
+      <button aria-pressed={view === "app"} onClick={() => onChange("app")}>Driver app</button>
+      <button aria-pressed={view === "fleet"} onClick={() => onChange("fleet")}>Fleet console</button>
+    </nav>
+  );
+}
+
 export default function App() {
+  const [view, setView] = useView();
   const live = useLive();
   const { state, messages } = live;
   const [network, setNetwork] = useState(null);
@@ -116,7 +139,18 @@ export default function App() {
   };
   const props = { state, live, network, companion, explain, go: setTab };
 
+  if (view === "fleet") {
+    return (
+      <>
+        <ViewSwitch view={view} onChange={setView} />
+        <FleetConsole />
+      </>
+    );
+  }
+
   return (
+    <>
+    <ViewSwitch view={view} onChange={setView} />
     <div className="stage">
       <div className="device">
         <div className="app-screen">
@@ -147,5 +181,6 @@ export default function App() {
       </div>
       <SimDock state={state} network={network} health={health} connected={live.connected} messages={messages} />
     </div>
+    </>
   );
 }

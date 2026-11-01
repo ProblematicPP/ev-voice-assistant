@@ -61,7 +61,8 @@ class FleetManager:
         rows = []
         for v in self.vehicles.itertuples():
             rul = self.core.rul(v.fast_charge_share, soh_now=v.soh, cum_stress=v.cum_stress)
-            rows.append({"vehicle_id": v.vehicle_id, "zone": v.zone, "status": v.status, "soc": v.soc,
+            rows.append({"vehicle_id": v.vehicle_id, "zone": v.zone, "zone_name": self.ctx.net.places[v.zone]["name"],
+                         "status": v.status, "soc": v.soc,
                          "soh": round(v.soh, 3), "range_km": round(self.range_km(v.soc, v.soh)),
                          "years_to_70pct": rul["years"], "fast_charge_share": v.fast_charge_share,
                          "band": "healthy" if v.soh >= 0.85 else "worn" if v.soh >= 0.75 else "near end of life"})

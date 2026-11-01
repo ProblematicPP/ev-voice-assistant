@@ -465,6 +465,65 @@ button.card:hover { border-color: color-mix(in srgb, var(--brand) 45%, var(--lin
   .sim-dock { width: auto; margin: 16px; position: static; max-height: none; }
 }
 
+/* ---------- view switch (driver app | fleet console) ---------- */
+.seg { display: inline-flex; background: var(--panel-2); border: 1px solid var(--line); border-radius: 12px; padding: 3px; gap: 2px; }
+.seg button { border: 0; background: none; border-radius: 9px; padding: 6px 12px; font-weight: 600; font-size: 13.5px; color: var(--ink-2); }
+.seg button[aria-pressed="true"] { background: var(--panel); color: var(--ink); box-shadow: 0 1px 3px rgba(24, 33, 43, 0.12); }
+.view-switch { display: flex; width: max-content; margin: 16px auto 0; }
+.view-switch + .stage { padding-top: 16px; }
+@media (max-width: 900px) { .view-switch { margin: 10px auto; } .view-switch + .stage { padding-top: 0; } }
+
+/* ---------- fleet console (operator dashboard, not the phone app) ---------- */
+.fleet { max-width: 1240px; margin: 0 auto; padding: 18px 24px 40px; }
+.fc-head h1 { font-size: 28px; margin: 0; }
+.fc-head p { margin: 4px 0 0; color: var(--ink-2); }
+.fc-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin: 18px 0; }
+.fc-kpis > div { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 12px 16px; display: grid; }
+.fc-kpis b { font-size: 28px; line-height: 1.1; }
+.fc-kpis span { font-size: 13px; color: var(--ink-2); }
+.fc-kpis.small { margin: 12px 0; }
+.fc-kpis.small b { font-size: 20px; }
+.fc-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.fc-wide { grid-column: 1 / -1; }
+@media (max-width: 900px) { .fc-grid { grid-template-columns: minmax(0, 1fr); } .fleet { padding: 12px 16px 32px; } }
+.fc-card { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 16px 18px; min-width: 0; }
+.fc-card h2 { font-size: 17px; margin: 0; }
+.fc-card > p, .fc-card-head p { margin: 2px 0 12px; font-size: 13.5px; color: var(--ink-2); }
+.fc-card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+.fc-note { font-size: 12.5px; color: var(--ink-3); margin: 10px 0 0; }
+.fc-scroll { overflow-x: auto; }
+.fc-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.fc-table th { text-align: left; font-weight: 500; color: var(--ink-3); padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.fc-table td { padding: 7px 8px; border-bottom: 1px solid var(--grid); white-space: nowrap; }
+.fc-table .r { text-align: right; }
+.fc-table tr.sel td { background: var(--brand-soft); }
+.band { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
+.band i { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+.band.ok { color: var(--ok); } .band.warn { color: var(--warn); } .band.bad { color: var(--bad); }
+
+.fc-heat-grid { display: grid; gap: 2px; align-items: center; }
+.fc-heat-row { display: contents; }
+.fc-heat-zone { font-size: 12.5px; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 8px; }
+.fc-heat-hour { font-size: 11px; color: var(--ink-3); font-family: var(--font-num); }
+.fc-heat-cell { height: 22px; border-radius: 3px; }
+.fc-heat-cell:hover { outline: 2px solid var(--ink); outline-offset: -1px; }
+.fc-heat-foot { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 10px; font-size: 13px; }
+.fc-heat-tip { color: var(--ink-2); min-height: 1.4em; }
+.fc-heat-legend { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; color: var(--ink-3); }
+.fc-heat-legend i { width: 120px; height: 10px; border-radius: 3px; display: block; }
+
+.fc-saving { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; font-size: 13.5px; color: var(--ink-2); margin-bottom: 10px; }
+.fc-saving b { font-size: 20px; color: var(--ink); }
+.ok-pill { background: var(--brand-soft); color: var(--brand); }
+.fc-moves { margin: 0; padding-left: 20px; display: grid; gap: 6px; font-size: 13.5px; }
+.fc-bars { display: grid; gap: 10px; margin: 6px 0 12px; }
+.fc-bar-row { display: grid; grid-template-columns: 170px 1fr 64px; gap: 10px; align-items: center; font-size: 13.5px; }
+.fc-bar-row b { text-align: right; }
+.fc-bar-track { height: 12px; background: var(--panel-2); border-radius: 4px; overflow: hidden; }
+.fc-bar-track i { display: block; height: 100%; border-radius: 0 4px 4px 0; }
+.fc-big { font-size: 15px; margin: 0; }
+.fc-big b { font-size: 24px; color: var(--brand); margin-right: 4px; }
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
