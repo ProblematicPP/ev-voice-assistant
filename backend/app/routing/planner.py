@@ -19,6 +19,7 @@ import itertools
 import numpy as np
 
 from app.config import COMFORT_SOC, DC_TARGET_SOC, HARD_MIN_SOC, RESERVE_SOC, VEHICLE
+from app.inputs import Inputs
 from app.routing.network import RoadNetwork, hav_km
 
 STOP_OVERHEAD_MIN = 5.0
@@ -38,9 +39,14 @@ def charge_minutes(soc_from: float, soc_to: float, power_kw: float, usable: floa
 
 
 class RoutePlanner:
-    def __init__(self, network: RoadNetwork, battery):
+    def __init__(self, network: RoadNetwork, battery, inputs: Inputs | None = None):
         self.net = network
         self.battery = battery
+        self.inputs = inputs or Inputs()
+
+    def station(self, ch: dict) -> dict:
+        """Live (here: simulated) availability and queue wait for a charger right now."""
+        return self.inputs.stations.status(ch, self.inputs.clock())
 
     # -- helpers -------------------------------------------------------------
     def _effective_kw(self, ch: dict) -> float:
@@ -66,7 +72,7 @@ class RoutePlanner:
         direct = float(hav_km(*oa, *ob))
         out = []
         for c in net.chargers.values():
-            if not c["available"] or c["id"] in exclude:
+            if not c["available"] or c["id"] in exclude or not self.station(c)["available"]:
                 continue
             ca = net.coords(c["node"])
             detour = float(hav_km(*oa, *ca) + hav_km(*ca, *ob))
@@ -125,7 +131,8 @@ class RoutePlanner:
                         continue
                     ch = net.chargers[y[0]]
                     cmin = charge_minutes(arr, y[1], self._effective_kw(ch), usable)
-                    step, extra = prof["drive_min"] + cmin + STOP_OVERHEAD_MIN, (arr, cmin)
+                    wait = self.station(ch)["wait_min"]         # a busy charger costs time, so may lose
+                    step, extra = prof["drive_min"] + cmin + wait + STOP_OVERHEAD_MIN, (arr, cmin)
                 nt = g + step
                 if nt < best.get(y, float("inf")):
                     best[y] = nt
@@ -172,6 +179,7 @@ class RoutePlanner:
             st["charge_min"] = round(charge_minutes(st["arrive_soc"], st["depart_soc"], st["power_kw"], usable)
                                      + STOP_OVERHEAD_MIN, 1)
             st["cost_inr"] = round(kwh * st["price_per_kwh"], 0)
+            st["wait_min"] = self.station(net.chargers[st["charger_id"]])["wait_min"]
         return {"legs": legs, "stops": stops}
 
     # -- multi-waypoint plan --------------------------------------------------
@@ -232,7 +240,7 @@ class RoutePlanner:
             b = self._walk(ch["node"], dest, pred_c, energy)
             dep = max(target, round(arr + 0.05, 3))
             kw = self._effective_kw(ch)
-            cmin = charge_minutes(arr, dep, kw, usable) + STOP_OVERHEAD_MIN
+            cmin = charge_minutes(arr, dep, kw, usable) + STOP_OVERHEAD_MIN + self.station(ch)["wait_min"]
             total = a["drive_min"] + cmin + b["drive_min"]
             if best is None or total < best[0]:
                 best = (total, ch, a, b, arr, dep, kw)
@@ -252,7 +260,7 @@ class RoutePlanner:
                 "synthetic_fields": ch.get("synthetic_fields", []),
                 "arrive_soc": round(arr, 3), "depart_soc": dep, "charge_kwh": round(kwh, 2),
                 "charge_min": round(charge_minutes(arr, dep, kw, usable) + STOP_OVERHEAD_MIN, 1),
-                "cost_inr": round(kwh * ch["price_per_kwh"], 0)}
+                "cost_inr": round(kwh * ch["price_per_kwh"], 0), "wait_min": self.station(ch)["wait_min"]}
         return self._summarize(origin, [dest], soc, legs, [stop])
 
     def plan_direct(self, origin: int, destinations: list[int], soc: float, cond: dict) -> dict:
@@ -276,6 +284,10 @@ class RoutePlanner:
     def _summarize(self, origin, destinations, soc, legs, stops) -> dict:
         drive = sum(l["drive_min"] for l in legs)
         charge = sum(s["charge_min"] for s in stops)
+        wait = sum(s.get("wait_min", 0.0) for s in stops)
+        # Route choice uses free-flow OSM speeds; congestion (traffic provider) adjusts the ETA
+        now = self.inputs.clock()
+        delay = sum(l["drive_min"] * (self.inputs.traffic.factor(now, urban=self._urban(l)) - 1) for l in legs)
         route_nodes = [legs[0]["from"]]
         for l in legs:
             route_nodes += l["path"][1:]
@@ -294,7 +306,9 @@ class RoutePlanner:
                 "distance_km": round(sum(l["distance_km"] for l in legs), 1),
                 "drive_min": round(drive, 0),
                 "charge_min": round(charge, 0),
-                "total_min": round(drive + charge, 0),
+                "wait_min": round(wait, 0),
+                "traffic_delay_min": round(delay, 0),
+                "total_min": round(drive + delay + charge + wait, 0),
                 "energy_kwh": round(sum(l["energy_kwh"] for l in legs), 2),
                 "charging_cost_inr": round(sum(s["cost_inr"] for s in stops), 0),
                 "start_soc": round(soc, 3),
@@ -302,13 +316,17 @@ class RoutePlanner:
             },
         }
 
+    @staticmethod
+    def _urban(leg: dict) -> bool:
+        return leg["drive_min"] > 0 and leg["distance_km"] / (leg["drive_min"] / 60) < 45
+
     def _infeasible(self, origin, destinations, soc, cond, failed_at, legs) -> dict:
         energy = self.battery.edge_energy_kwh(self.net, cond)
         usable = self.battery.usable_kwh()
         dist, pred = self.net.tree(origin)
         reachable = []
         for c in self.net.chargers.values():
-            if c["kind"] == "home_ac" or not np.isfinite(dist[c["node"]]):
+            if c["kind"] == "home_ac" or not np.isfinite(dist[c["node"]]) or not self.station(c)["available"]:
                 continue
             p = self._walk(origin, c["node"], pred, energy)
             arr = soc - p["energy_kwh"] / usable

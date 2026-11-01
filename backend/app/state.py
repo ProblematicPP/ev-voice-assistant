@@ -16,6 +16,7 @@ class VehicleState:
     plugged_in: bool = False
     precooling: bool = False
     odometer_km: float = 0.0
+    weather: dict | None = None          # last live-weather reading applied, if any
 
     active_plan: dict | None = None
     # leg index, node index within that leg's path, waypoints reached so far

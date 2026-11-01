@@ -12,7 +12,8 @@ function Itinerary({ route, progressLeg }) {
         route.stops.find((st) => st.node === leg.to);
       items.push({
         cls: "stop", legNote, done: i < progressLeg, title: s.name,
-        sub: `Charge ${pct(s.arrive_soc)} to ${pct(s.depart_soc)}, about ${Math.round(s.charge_min)} min, ${inr(s.cost_inr)}`,
+        sub: `Charge ${pct(s.arrive_soc)} to ${pct(s.depart_soc)}, about ${Math.round(s.charge_min)} min, ${inr(s.cost_inr)}`
+          + (s.wait_min >= 1 ? `. Expect a ${Math.round(s.wait_min)} min wait.` : ""),
       });
     } else {
       items.push({
@@ -76,7 +77,8 @@ function ActiveRoute({ state, live }) {
         </button>
       </div>
       <div className="totals">
-        <div><strong className="num">{mins(t.total_min)}</strong><small>total</small></div>
+        <div><strong className="num">{mins(t.total_min)}</strong>
+          <small>{t.traffic_delay_min >= 1 ? `incl. ${Math.round(t.traffic_delay_min)} min traffic` : "total"}</small></div>
         <div><strong className="num">{t.distance_km} km</strong><small>distance</small></div>
         <div><strong className="num">{pct(proj?.arrival_soc ?? t.arrival_soc)}</strong><small>on arrival</small></div>
         {t.charging_cost_inr > 0 && <div><strong className="num">{inr(t.charging_cost_inr)}</strong><small>charging</small></div>}

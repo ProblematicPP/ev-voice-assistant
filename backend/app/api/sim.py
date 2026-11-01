@@ -47,6 +47,8 @@ def _apply(upd: dict):
         raise HTTPException(400, "hvac_mode must be off|fan|ac|heat")
     for k, v in upd.items():
         setattr(st, k, v)
+    if "ambient_temp_c" in upd:
+        st.weather = None                 # a manual temperature replaces the live reading
     if upd.get("plugged_in") is False:
         st.precooling = False
 
@@ -77,6 +79,19 @@ async def scenario(name: str):
     ctx = get_ctx()
     ctx.reset()
     _apply(SCENARIOS[name])
+    return await _after_change()
+
+
+@router.post("/weather/live")
+async def live_weather():
+    """Set the outside temperature from live weather at the car's location (Open-Meteo, no key)."""
+    ctx = get_ctx()
+    lat, lon = ctx.net.coords(ctx.state.location)
+    w = ctx.inputs.weather.current(lat, lon, ctx.state.ambient_temp_c)
+    if w.get("error"):
+        raise HTTPException(503, "Live weather is unreachable (offline?); keeping the simulated temperature.")
+    ctx.state.ambient_temp_c = round(w["temp_c"], 1)
+    ctx.state.weather = w
     return await _after_change()
 
 

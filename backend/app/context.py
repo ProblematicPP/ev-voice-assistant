@@ -7,6 +7,7 @@ from app import simulation
 from app.battery_core.core import BatteryCore
 from app.companion import coaching, cost, resale
 from app.config import DATA_DIR, VEHICLE
+from app.inputs import Inputs
 from app.routing.network import RoadNetwork
 from app.routing.planner import RoutePlanner
 from app.state import VehicleState
@@ -16,7 +17,8 @@ class AppContext:
     def __init__(self):
         self.battery = BatteryCore()
         self.net = RoadNetwork()
-        self.planner = RoutePlanner(self.net, self.battery)
+        self.inputs = Inputs()
+        self.planner = RoutePlanner(self.net, self.battery, self.inputs)
         self.sessions_hist = pd.read_csv(DATA_DIR / "charging_history.csv")
         self.trips = pd.read_csv(DATA_DIR / "owner_trips.csv")
         self.reset()
@@ -71,6 +73,7 @@ class AppContext:
             "recent_charging": recent,
             "events": st.events[-12:][::-1],
             "pending_offer": st.pending_offer,
+            "inputs": {**self.inputs.describe(), "weather_now": st.weather},
         }
 
 

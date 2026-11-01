@@ -1,10 +1,18 @@
 import { useState } from "react";
+import { api } from "../api.js";
 import { SlidersIcon } from "../icons.jsx";
 import SimControls from "./SimControls.jsx";
 
 /** Demo tooling that lives beside the phone, not inside the app: system status, assistant trace, simulator. */
 export default function SimDock({ state, network, health, connected, messages }) {
   const [open, setOpen] = useState(true);
+  const [weatherMsg, setWeatherMsg] = useState("");
+  const liveWeather = async () => {
+    setWeatherMsg("Fetching…");
+    try { await api("/sim/weather/live", { method: "POST" }); setWeatherMsg(""); }
+    catch (e) { setWeatherMsg(e.message); }
+  };
+  const w = state?.inputs?.weather_now;
   const lastReply = messages.findLast((m) => m.role === "assistant");
   const llm = health?.llm;
   return (
@@ -24,6 +32,14 @@ export default function SimDock({ state, network, health, connected, messages })
             <dd className={llm?.available ? "ok" : "warn"}>{llm ? (llm.available ? `LLM (${llm.model})` : "Rule-based parser (Ollama offline)") : "Unknown"}</dd>
             <dt>Map data</dt>
             <dd>{network ? `${network.chargers.length} chargers, including ${network.chargers.filter((c) => c.demo).length} demo` : "Loading"}</dd>
+            <dt>Weather</dt>
+            <dd>
+              {w ? `Live, ${w.temp_c} °C ${w.condition ?? ""} (Open-Meteo)` : "Simulated (slider below)"}{" "}
+              <button className="btn small" onClick={liveWeather} disabled={!connected}>Use live weather</button>
+              {weatherMsg && <span className="faint"> {weatherMsg}</span>}
+            </dd>
+            <dt>Traffic</dt><dd>Simulated rush hours (adds to ETA)</dd>
+            <dt>Chargers</dt><dd>Simulated queues and outages</dd>
           </dl>
 
           {lastReply?.tools?.length > 0 && (
