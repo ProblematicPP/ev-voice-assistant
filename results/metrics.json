@@ -1,5 +1,5 @@
 {
-  "generated": "2026-11-02 01:24",
+  "generated": "2026-11-02 10:46",
   "gpu": "NVIDIA GeForce RTX 4050 Laptop GPU, 6141 MiB",
   "models": {
     "soh": {
@@ -21,6 +21,336 @@
       "personal_mape_pct": 6.378084821732491
     }
   },
+  "nasa": {
+    "classic": {
+      "zero_shot": {
+        "mae_pct_points": 15.199465629651668,
+        "rmse_pct_points": 16.650722956700353,
+        "mape_pct": 20.840860384806206
+      },
+      "real": {
+        "mae_pct_points": 2.7399329589041144,
+        "rmse_pct_points": 3.526905309866621,
+        "mape_pct": 3.6316572921113384
+      },
+      "fine_tuned": {
+        "mae_pct_points": 3.4602751519234336,
+        "rmse_pct_points": 4.251102674182067,
+        "mape_pct": 4.575091606430366
+      },
+      "cycle_only": {
+        "mae_pct_points": 4.227163028867846,
+        "rmse_pct_points": 4.907771467972568,
+        "mape_pct": 5.533386404155119
+      },
+      "mean": {
+        "mae_pct_points": 7.9202980466616735,
+        "rmse_pct_points": 9.319513248971331,
+        "mape_pct": 10.349504792274477
+      },
+      "per_cell_mae_pct_points": {
+        "B0005": {
+          "zero_shot": 18.4,
+          "real": 0.93,
+          "fine_tuned": 2.47,
+          "cycle_only": 1.33,
+          "mean": 7.88
+        },
+        "B0006": {
+          "zero_shot": 15.19,
+          "real": 5.54,
+          "fine_tuned": 5.36,
+          "cycle_only": 4.36,
+          "mean": 10.08
+        },
+        "B0007": {
+          "zero_shot": 11.71,
+          "real": 1.11,
+          "fine_tuned": 1.12,
+          "cycle_only": 6.02,
+          "mean": 6.7
+        },
+        "B0018": {
+          "zero_shot": 15.54,
+          "real": 3.46,
+          "fine_tuned": 5.08,
+          "cycle_only": 5.31,
+          "mean": 6.9
+        }
+      },
+      "cells": 4,
+      "cycles": 579
+    },
+    "all": {
+      "zero_shot": {
+        "mae_pct_points": 17.25471302878923,
+        "rmse_pct_points": 22.192737614724127,
+        "mape_pct": 30.354311091453507
+      },
+      "real": {
+        "mae_pct_points": 6.558301325664114,
+        "rmse_pct_points": 9.041705214832223,
+        "mape_pct": 10.736068603283373
+      },
+      "fine_tuned": {
+        "mae_pct_points": 7.595262943393158,
+        "rmse_pct_points": 10.781595783586699,
+        "mape_pct": 12.580559550643649
+      },
+      "cycle_only": {
+        "mae_pct_points": 12.368663653109515,
+        "rmse_pct_points": 15.318780930243864,
+        "mape_pct": 20.357719558484042
+      },
+      "mean": {
+        "mae_pct_points": 12.434105187265363,
+        "rmse_pct_points": 15.196226114734431,
+        "mape_pct": 20.29440031366285
+      },
+      "per_cell_mae_pct_points": {
+        "B0005": {
+          "zero_shot": 18.4,
+          "real": 2.1,
+          "fine_tuned": 3.15,
+          "cycle_only": 8.86,
+          "mean": 9.03
+        },
+        "B0006": {
+          "zero_shot": 15.19,
+          "real": 4.35,
+          "fine_tuned": 4.59,
+          "cycle_only": 7.57,
+          "mean": 8.82
+        },
+        "B0007": {
+          "zero_shot": 11.71,
+          "real": 5.35,
+          "fine_tuned": 1.96,
+          "cycle_only": 10.6,
+          "mean": 9.87
+        },
+        "B0018": {
+          "zero_shot": 15.54,
+          "real": 4.05,
+          "fine_tuned": 4.01,
+          "cycle_only": 8.52,
+          "mean": 8.64
+        },
+        "B0025": {
+          "zero_shot": 2.78,
+          "real": 7.5,
+          "fine_tuned": 18.13,
+          "cycle_only": 18.49,
+          "mean": 19.86
+        },
+        "B0026": {
+          "zero_shot": 8.19,
+          "real": 3.2,
+          "fine_tuned": 11.24,
+          "cycle_only": 15.53,
+          "mean": 17.94
+        },
+        "B0027": {
+          "zero_shot": 9.31,
+          "real": 7.3,
+          "fine_tuned": 10.53,
+          "cycle_only": 15.9,
+          "mean": 17.86
+        },
+        "B0028": {
+          "zero_shot": 7.82,
+          "real": 15.3,
+          "fine_tuned": 7.46,
+          "cycle_only": 14.89,
+          "mean": 17.53
+        },
+        "B0029": {
+          "zero_shot": 2.94,
+          "real": 1.53,
+          "fine_tuned": 3.35,
+          "cycle_only": 16.21,
+          "mean": 16.7
+        },
+        "B0030": {
+          "zero_shot": 2.58,
+          "real": 3.35,
+          "fine_tuned": 2.93,
+          "cycle_only": 8.77,
+          "mean": 10.31
+        },
+        "B0031": {
+          "zero_shot": 4.54,
+          "real": 1.13,
+          "fine_tuned": 2.17,
+          "cycle_only": 13.16,
+          "mean": 14.88
+        },
+        "B0032": {
+          "zero_shot": 2.4,
+          "real": 5.87,
+          "fine_tuned": 3.65,
+          "cycle_only": 15.63,
+          "mean": 16.83
+        },
+        "B0033": {
+          "zero_shot": 7.22,
+          "real": 2.96,
+          "fine_tuned": 3.25,
+          "cycle_only": 5.67,
+          "mean": 5.84
+        },
+        "B0034": {
+          "zero_shot": 4.95,
+          "real": 5.88,
+          "fine_tuned": 10.61,
+          "cycle_only": 2.23,
+          "mean": 4.07
+        },
+        "B0036": {
+          "zero_shot": 1.24,
+          "real": 10.7,
+          "fine_tuned": 7.76,
+          "cycle_only": 16.36,
+          "mean": 13.99
+        },
+        "B0038": {
+          "zero_shot": 18.03,
+          "real": 11.73,
+          "fine_tuned": 11.9,
+          "cycle_only": 15.89,
+          "mean": 16.34
+        },
+        "B0039": {
+          "zero_shot": 6.06,
+          "real": 1.56,
+          "fine_tuned": 5.35,
+          "cycle_only": 16.06,
+          "mean": 16.42
+        },
+        "B0040": {
+          "zero_shot": 20.16,
+          "real": 8.91,
+          "fine_tuned": 15.75,
+          "cycle_only": 19.34,
+          "mean": 19.88
+        },
+        "B0041": {
+          "zero_shot": 43.87,
+          "real": 5.68,
+          "fine_tuned": 3.41,
+          "cycle_only": 25.18,
+          "mean": 24.74
+        },
+        "B0042": {
+          "zero_shot": 12.57,
+          "real": 10.59,
+          "fine_tuned": 17.96,
+          "cycle_only": 7.52,
+          "mean": 8.22
+        },
+        "B0043": {
+          "zero_shot": 18.71,
+          "real": 3.74,
+          "fine_tuned": 3.03,
+          "cycle_only": 4.38,
+          "mean": 5.56
+        },
+        "B0044": {
+          "zero_shot": 19.58,
+          "real": 5.61,
+          "fine_tuned": 9.23,
+          "cycle_only": 5.37,
+          "mean": 5.73
+        },
+        "B0045": {
+          "zero_shot": 54.38,
+          "real": 19.53,
+          "fine_tuned": 18.89,
+          "cycle_only": 37.14,
+          "mean": 35.81
+        },
+        "B0046": {
+          "zero_shot": 26.32,
+          "real": 22.86,
+          "fine_tuned": 28.68,
+          "cycle_only": 8.2,
+          "mean": 7.84
+        },
+        "B0047": {
+          "zero_shot": 32.54,
+          "real": 3.15,
+          "fine_tuned": 3.4,
+          "cycle_only": 11.31,
+          "mean": 10.5
+        },
+        "B0048": {
+          "zero_shot": 30.04,
+          "real": 2.26,
+          "fine_tuned": 2.34,
+          "cycle_only": 7.23,
+          "mean": 6.8
+        },
+        "B0049": {
+          "zero_shot": 39.0,
+          "real": 13.29,
+          "fine_tuned": 17.48,
+          "cycle_only": 29.36,
+          "mean": 27.37
+        },
+        "B0050": {
+          "zero_shot": 18.47,
+          "real": 25.69,
+          "fine_tuned": 24.9,
+          "cycle_only": 8.08,
+          "mean": 8.05
+        },
+        "B0051": {
+          "zero_shot": 50.48,
+          "real": 23.09,
+          "fine_tuned": 25.57,
+          "cycle_only": 30.94,
+          "mean": 28.95
+        },
+        "B0052": {
+          "zero_shot": 26.86,
+          "real": 9.33,
+          "fine_tuned": 15.41,
+          "cycle_only": 5.28,
+          "mean": 1.96
+        },
+        "B0053": {
+          "zero_shot": 21.74,
+          "real": 11.63,
+          "fine_tuned": 5.11,
+          "cycle_only": 21.57,
+          "mean": 20.28
+        },
+        "B0054": {
+          "zero_shot": 31.47,
+          "real": 6.68,
+          "fine_tuned": 10.55,
+          "cycle_only": 25.64,
+          "mean": 25.18
+        },
+        "B0055": {
+          "zero_shot": 37.61,
+          "real": 2.25,
+          "fine_tuned": 6.86,
+          "cycle_only": 19.23,
+          "mean": 18.68
+        },
+        "B0056": {
+          "zero_shot": 32.21,
+          "real": 3.22,
+          "fine_tuned": 2.84,
+          "cycle_only": 12.28,
+          "mean": 11.92
+        }
+      },
+      "cells": 34,
+      "cycles": 2459
+    }
+  },
   "routing": {
     "trips": 108,
     "conditions": "34 \u00b0C, AC on, current battery health",
@@ -30,7 +360,7 @@
     "ours_below_reserve_pct": 0.0,
     "ours_refused_pct": 0.0,
     "both_completed": 92,
-    "avg_total_min_ours": 98.03260869565217,
+    "avg_total_min_ours": 123.0,
     "avg_total_min_baseline": 102.63409124978905,
     "avg_stops_ours": 0.2717391304347826,
     "avg_stops_baseline": 0.1956521739130435
@@ -91,8 +421,8 @@
     "fallback": {
       "prompts": 17,
       "success_pct": 100.0,
-      "median_latency_s": 0.05122739996295422,
-      "p95_latency_s": 1.2083319199737148,
+      "median_latency_s": 0.013725799974054098,
+      "p95_latency_s": 0.3405443599913269,
       "failures": [],
       "rows": [
         {
@@ -100,7 +430,7 @@
           "expected": "check_range_to",
           "got": "check_range_to",
           "ok": true,
-          "latency_s": 0.2621182999573648,
+          "latency_s": 0.3216727999970317,
           "source": "fallback"
         },
         {
@@ -108,7 +438,7 @@
           "expected": "navigate_to",
           "got": "navigate_to",
           "ok": true,
-          "latency_s": 0.4332841000286862,
+          "latency_s": 0.32123180001508445,
           "source": "fallback"
         },
         {
@@ -116,7 +446,7 @@
           "expected": "navigate_to",
           "got": "navigate_to",
           "ok": true,
-          "latency_s": 0.0025561999063938856,
+          "latency_s": 0.0006529999664053321,
           "source": "fallback"
         },
         {
@@ -124,7 +454,7 @@
           "expected": "explain_range",
           "got": "explain_range",
           "ok": true,
-          "latency_s": 0.007873799884691834,
+          "latency_s": 0.0018378999084234238,
           "source": "fallback"
         },
         {
@@ -132,7 +462,7 @@
           "expected": "get_battery_status",
           "got": "get_battery_status",
           "ok": true,
-          "latency_s": 0.01194640004541725,
+          "latency_s": 0.002239900059066713,
           "source": "fallback"
         },
         {
@@ -140,7 +470,7 @@
           "expected": "list_chargers",
           "got": "list_chargers",
           "ok": true,
-          "latency_s": 0.05122739996295422,
+          "latency_s": 0.013725799974054098,
           "source": "fallback"
         },
         {
@@ -148,7 +478,7 @@
           "expected": "set_climate",
           "got": "set_climate",
           "ok": true,
-          "latency_s": 0.012672499986365438,
+          "latency_s": 0.002759199938736856,
           "source": "fallback"
         },
         {
@@ -156,7 +486,7 @@
           "expected": "precool_cabin",
           "got": "precool_cabin",
           "ok": true,
-          "latency_s": 0.0007590999593958259,
+          "latency_s": 0.00019550009164959192,
           "source": "fallback"
         },
         {
@@ -164,7 +494,7 @@
           "expected": "assisted_driving",
           "got": "assisted_driving",
           "ok": true,
-          "latency_s": 0.0002476000227034092,
+          "latency_s": 5.749997217208147e-05,
           "source": "fallback"
         },
         {
@@ -172,7 +502,7 @@
           "expected": "get_charging_coaching",
           "got": "get_charging_coaching",
           "ok": true,
-          "latency_s": 0.01748470007441938,
+          "latency_s": 0.003560699988156557,
           "source": "fallback"
         },
         {
@@ -180,7 +510,7 @@
           "expected": "get_eco_driving_coaching",
           "got": "get_eco_driving_coaching",
           "ok": true,
-          "latency_s": 0.274377099936828,
+          "latency_s": 0.04269979998935014,
           "source": "fallback"
         },
         {
@@ -188,7 +518,7 @@
           "expected": "get_cost_and_resale",
           "got": "get_cost_and_resale",
           "ok": true,
-          "latency_s": 0.09213080001063645,
+          "latency_s": 0.02311309997458011,
           "source": "fallback"
         },
         {
@@ -196,7 +526,7 @@
           "expected": "get_fleet_status",
           "got": "get_fleet_status",
           "ok": true,
-          "latency_s": 0.8301234999671578,
+          "latency_s": 0.09586359991226345,
           "source": "fallback"
         },
         {
@@ -204,7 +534,7 @@
           "expected": "navigate_to",
           "got": "navigate_to",
           "ok": true,
-          "latency_s": 0.16772909997962415,
+          "latency_s": 0.03571970004122704,
           "source": "fallback"
         },
         {
@@ -212,7 +542,7 @@
           "expected": "add_stop",
           "got": "add_stop",
           "ok": true,
-          "latency_s": 0.14102600002661347,
+          "latency_s": 0.0311644000466913,
           "source": "fallback"
         },
         {
@@ -220,7 +550,7 @@
           "expected": "cancel_navigation",
           "got": "cancel_navigation",
           "ok": true,
-          "latency_s": 0.0002389999572187662,
+          "latency_s": 7.509998977184296e-05,
           "source": "fallback"
         },
         {
@@ -228,7 +558,7 @@
           "expected": "navigate_to",
           "got": "navigate_to",
           "ok": true,
-          "latency_s": 2.7211655999999493,
+          "latency_s": 0.4160305999685079,
           "source": "fallback"
         }
       ]
@@ -236,8 +566,8 @@
     "llm": {
       "prompts": 17,
       "success_pct": 100.0,
-      "median_latency_s": 3.5984803000465035,
-      "p95_latency_s": 6.309049800038334,
+      "median_latency_s": 3.835644999984652,
+      "p95_latency_s": 6.708609860041172,
       "failures": [],
       "rows": [
         {
@@ -245,7 +575,7 @@
           "expected": "check_range_to",
           "got": "check_range_to",
           "ok": true,
-          "latency_s": 5.429051200044341,
+          "latency_s": 4.713589300052263,
           "source": "llm"
         },
         {
@@ -253,7 +583,7 @@
           "expected": "navigate_to",
           "got": "navigate_to",
           "ok": true,
-          "latency_s": 5.371321800048463,
+          "latency_s": 4.2432087999768555,
           "source": "llm"
         },
         {
@@ -261,7 +591,7 @@
           "expected": "navigate_to",
           "got": "navigate_to",
           "ok": true,
-          "latency_s": 3.3330457999836653,
+          "latency_s": 3.445222200010903,
           "source": "llm"
         },
         {
@@ -269,7 +599,7 @@
           "expected": "explain_range",
           "got": "explain_range",
           "ok": true,
-          "latency_s": 3.437313799979165,
+          "latency_s": 3.835644999984652,
           "source": "llm"
         },
         {
@@ -277,7 +607,7 @@
           "expected": "get_battery_status",
           "got": "get_battery_status",
           "ok": true,
-          "latency_s": 2.9564877999946475,
+          "latency_s": 3.32213599991519,
           "source": "llm"
         },
         {
@@ -285,7 +615,7 @@
           "expected": "list_chargers",
           "got": "list_chargers",
           "ok": true,
-          "latency_s": 4.260033499915153,
+          "latency_s": 4.588044499978423,
           "source": "llm"
         },
         {
@@ -293,7 +623,7 @@
           "expected": "set_climate",
           "got": "set_climate",
           "ok": true,
-          "latency_s": 2.7120312000624835,
+          "latency_s": 3.1740915999980643,
           "source": "llm"
         },
         {
@@ -301,7 +631,7 @@
           "expected": "precool_cabin",
           "got": "precool_cabin",
           "ok": true,
-          "latency_s": 3.357298000017181,
+          "latency_s": 3.7129900999134406,
           "source": "llm"
         },
         {
@@ -309,7 +639,7 @@
           "expected": "assisted_driving",
           "got": "assisted_driving",
           "ok": true,
-          "latency_s": 3.5984803000465035,
+          "latency_s": 3.625734700006433,
           "source": "llm"
         },
         {
@@ -317,7 +647,7 @@
           "expected": "get_charging_coaching",
           "got": "get_charging_coaching",
           "ok": true,
-          "latency_s": 3.698988499934785,
+          "latency_s": 3.68809389998205,
           "source": "llm"
         },
         {
@@ -325,7 +655,7 @@
           "expected": "get_eco_driving_coaching",
           "got": "get_eco_driving_coaching",
           "ok": true,
-          "latency_s": 3.2367566999746487,
+          "latency_s": 3.26460340002086,
           "source": "llm"
         },
         {
@@ -333,7 +663,7 @@
           "expected": "get_cost_and_resale",
           "got": "get_cost_and_resale",
           "ok": true,
-          "latency_s": 3.981845899950713,
+          "latency_s": 3.822978000040166,
           "source": "llm"
         },
         {
@@ -341,7 +671,7 @@
           "expected": "get_fleet_status",
           "got": "get_fleet_status",
           "ok": true,
-          "latency_s": 3.9976005000062287,
+          "latency_s": 4.663058300036937,
           "source": "llm"
         },
         {
@@ -349,7 +679,7 @@
           "expected": "navigate_to",
           "got": "navigate_to",
           "ok": true,
-          "latency_s": 3.441173500032164,
+          "latency_s": 4.452624099911191,
           "source": "llm"
         },
         {
@@ -357,7 +687,7 @@
           "expected": "add_stop",
           "got": "add_stop",
           "ok": true,
-          "latency_s": 3.6701523000374436,
+          "latency_s": 4.681587600032799,
           "source": "llm"
         },
         {
@@ -365,7 +695,7 @@
           "expected": "cancel_navigation",
           "got": "cancel_navigation",
           "ok": true,
-          "latency_s": 2.830722099984996,
+          "latency_s": 3.940690099960193,
           "source": "llm"
         },
         {
@@ -373,17 +703,17 @@
           "expected": "navigate_to",
           "got": "navigate_to",
           "ok": true,
-          "latency_s": 9.829044200014323,
+          "latency_s": 14.688692099996842,
           "source": "llm"
         }
       ]
     }
   },
   "voice": {
-    "tts_s": 1.3770437999628484,
-    "stt_s": 0.5183209999231622,
+    "tts_s": 2.8041777999605983,
+    "stt_s": 1.0836399999679998,
     "stt_device": "cuda",
     "heard": "Will I make it to Mysore without stopping?",
-    "audio_s": 2.14
+    "audio_s": 2.1
   }
 }

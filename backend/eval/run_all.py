@@ -65,6 +65,19 @@ def eval_models(ctx) -> dict:
     }
 
 
+def eval_nasa() -> dict:
+    """The SOH method on REAL cells (NASA PCoE), held out by cell. Skipped if the data isn't downloaded."""
+    if not (DATA_DIR / "nasa_cycles.csv").exists():
+        return {"skipped": "run python -m data_gen.nasa_battery first (downloads ~210 MB)"}
+    from training import validate_soh_nasa as v
+    df = pd.read_csv(DATA_DIR / "nasa_cycles.csv")
+    synthetic = TabularRegressor.load(v.MODEL_PATH)
+    classic, _ = v.evaluate(df[df.cell_id.isin(v.CLASSIC)], [[c] for c in v.CLASSIC], synthetic)
+    cells = np.random.default_rng(0).permutation(sorted(df.cell_id.unique()))
+    every, _ = v.evaluate(df, [list(f) for f in np.array_split(cells, 5)], synthetic)
+    return {"classic": classic, "all": every}
+
+
 # -- 2. Route and charging-stop efficiency ------------------------------------------------------
 def brochure_baseline(ctx, origin: int, dest: int, soc0: float, cond: dict) -> dict:
     """A static, non-battery-aware router: fastest path, and it believes the brochure range
@@ -277,6 +290,27 @@ def report(m: dict) -> str:
         f"{fmt(ro['fleet_mae_wh_km'], 1)} Wh/km | {fmt(ro['fleet_mape_pct'], 1)}% |",
         f"| Range MLP, personalised (fine-tuned) | same {ro['held_out_trips']} trips | "
         f"{fmt(ro['personal_mae_wh_km'], 1)} Wh/km | {fmt(ro['personal_mape_pct'], 1)}% |", "",
+        "### SOH on real batteries (NASA PCoE ageing data)", "",
+    ]
+    nz = m["nasa"]
+    if "skipped" in nz:
+        lines += [f"Skipped: {nz['skipped']}.", ""]
+    else:
+        lines += [
+            "Same 10 BMS features, computed from the measured signals of real 18650 cells; SOH = measured "
+            "capacity / 2.0 Ah. No cell is in both the training and test side.", "",
+            "| Held-out real cells | MLP trained on real cells | Synthetic model fine-tuned on real | "
+            "Synthetic model, unchanged | Cycle count only | Average SOH |", "|---|---|---|---|---|---|",
+        ]
+        for label, k in (("Classic 4 cells (B0005/6/7/18), leave-one-cell-out", "classic"),
+                         ("All 34 cells, 5 folds by cell", "all")):
+            res = nz[k]
+            cell = lambda meth: f"{fmt(res[meth]['mae_pct_points'])} pts ({fmt(res[meth]['mape_pct'], 1)}%)"
+            lines.append(f"| {label} ({res['cycles']} cycles) | {cell('real')} | {cell('fine_tuned')} | "
+                         f"{cell('zero_shot')} | {cell('cycle_only')} | {cell('mean')} |")
+        lines += ["", "MAE in SOH percentage points (MAPE in brackets). The method works on real cells; the app's "
+                  "synthetic-trained weights do not transfer to them, so a real deployment must train on real data.", ""]
+    lines += [
         "## 2. Route and charging-stop efficiency", "",
         f"{r['trips']} trips (3 Bengaluru origins x 9 destinations x 4 starting charges), {r['conditions']}. "
         "The baseline routes the fastest way and trusts the brochure range (312 km); both are scored with the "
@@ -340,7 +374,7 @@ def main():
     args = ap.parse_args()
     ctx = AppContext()
     m = {"generated": datetime.now().strftime("%Y-%m-%d %H:%M"), "gpu": gpu_info()}
-    steps = [("models", lambda: eval_models(ctx)), ("routing", lambda: eval_routing(ctx)),
+    steps = [("models", lambda: eval_models(ctx)), ("nasa", eval_nasa), ("routing", lambda: eval_routing(ctx)),
              ("fleet", lambda: eval_fleet(ctx))]
     for name, fn in steps:
         t0 = time.time()

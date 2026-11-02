@@ -30,7 +30,7 @@ Status key:
 | 2.2 | Synthetic NASA/CALCE-style cells, trips, owner, charging (and fleet) data, one command | DONE | DONE | `data_gen/generate_all.py` | Every generator was re-run during this work. |
 | 2.3 | Simulated OBD-II/CAN telemetry stream | MISSING | DONE | `telemetry.py` | `TelemetrySource` interface; `ObdDongle` hardware stub raises; `SimulatedCanBus` emits 1 Hz frames. Exposed at `/api/companion/telemetry`. |
 | 2.4 | Weather / traffic / availability behind an interface; live weather allowed | MISSING | DONE | `inputs/__init__.py`, `api/sim.py` | Open-Meteo live weather (no key, offline fallback); simulated rush-hour traffic and charger queues/outages. |
-| 3.1 | SOH MLP, 10 BMS features, split by cell, held-out error | PARTIAL | DONE | `battery_core/soh_model.py`, `training/train_soh.py` | 65/15/20 train/val/test by cell. Test cells: MAE 0.73 %-points SOH, MAPE 0.96% (`eval.run_all`). |
+| 3.1 | SOH MLP, 10 BMS features, split by cell, held-out error | PARTIAL | DONE | `battery_core/soh_model.py`, `training/train_soh.py` | 65/15/20 train/val/test by cell. Test cells: MAE 0.73 %-points SOH, MAPE 0.96% (`eval.run_all`). On **real** NASA cells held out by cell, the same MLP trained on real cells scores ≈2.8 pts on the classic 4 and 6.6 pts across all 34, vs 4.2–12.4 for baselines. The synthetic-trained weights do not transfer (15–17 pts). |
 | 3.2 | Personalised range MLP from the owner's history; usable × SOH ÷ Wh/km; brochure range exposed | PARTIAL | DONE | `battery_core/range_model.py`, `training/train_range.py` | Fleet MLP fine-tuned on the owner's trips. On held-out owner trips MAE goes from 10.5 to 9.1 Wh/km (MAPE 7.7% → 6.4%). `naive_km` is the brochure figure. |
 | 3.3 | RUL / degradation projection for the 2-year resale by habit | PARTIAL | DONE | `battery_core/degradation.py`, `core.rul/project_soh` | Years to 70% SOH. Feeds resale, the Battery screen, the fleet and the charging-habit slider. |
 | 3.4 | Shapley attribution | DONE | DONE | `battery_core/attribution.py` | Exact over 5 factors; a test checks the factors sum to the total. |
@@ -83,6 +83,7 @@ work (routing choices, demo chargers, phone-app UI) on the branch before the aud
 | 5.4.1 LLM tool choice | `ba93f09` | A clear command overrides an LLM lookup ("Take me to Mysuru" had been answered with a range check). |
 | 7 evaluation | `5ae21c5` | `python -m eval.run_all` → `results/metrics.md`. |
 | 5.4.2 consistency, README | `40790b5` | The range check names the stop its offer takes; README rewritten for the whole system, including the RL note (4.5). |
+| 3.1 real-battery proof (added after the audit, on request) | see git log | `data_gen/nasa_battery.py` converts the NASA PCoE ageing data (34 real cells) to the 10 BMS features; `training/validate_soh_nasa.py` runs leave-cell-out validation against baselines; an `eval.run_all` section and tests. |
 | 8.3 demo script | `25201ef` | `DEMO_SCRIPT.md`; `run.txt` updated. |
 
 ## Headline results (`results/metrics.md`)
