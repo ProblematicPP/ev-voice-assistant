@@ -103,8 +103,9 @@ footer { padding: 40px 0 56px; color: var(--ink-3); font-size: 14.5px; }
     <h1>An EV voice assistant that checks the battery before it says yes</h1>
     <p class="lede">
       Most in-car assistants turn speech into commands. Volt routes every navigation, charging and climate request
-      through a battery-intelligence core first: trained models for battery health and personalized range, plus a
-      guard that blocks anything the car can't safely do.
+      through one shared battery-intelligence core first: a battery-health model trained on real NASA battery data,
+      a personalised range model, and a guard that blocks anything the car can't safely do. The same core drives
+      the companion app, the charging-aware route planner and a rental-fleet console.
     </p>
     <div class="actions">
       <a class="btn primary" href="https://github.com/ProblematicPP/ev-voice-assistant">View the code on GitHub</a>
@@ -114,17 +115,18 @@ footer { padding: 40px 0 56px; color: var(--ink-3); font-size: 14.5px; }
     <div class="exchange" aria-label="Example conversation">
       <div>
         <div class="bubble user">Will I make it to Mysore without stopping?</div>
-        <div class="bubble bot">No. Mysuru is 148 km away and at today's consumption you'd run out about 48 km short. One 18-minute stop at Magenta ChargeGrid fixes it. Want me to start that route?</div>
+        <div class="bubble bot">No, you'd run out about 66 km short of Mysuru. A 32-minute stop at Magenta ChargeGrid fixes it. Want me to start that route?</div>
         <div class="bubble user">Yes</div>
-        <div class="bubble bot">Routing to Mysuru with a charging stop at Magenta ChargeGrid (arrive 44%, charge to 80%). Total 2 h 47 min, arriving with 14%.</div>
-        <div class="bubble nudge"><b>Volt noticed:</b> at 40 °C with AC on, you'd reach Mysuru at 7%, below the safe reserve. Re-plan with a charging stop?</div>
+        <div class="bubble bot">Route set to Mysuru via Magenta ChargeGrid. You'll charge from 44% to 97% in 32 minutes and arrive at 15% after 3 hours 9 minutes. Charging costs ₹386.</div>
+        <div class="bubble nudge"><b>Volt noticed:</b> at 44 °C with AC on, you'd reach Mysuru at 7%, below the safe reserve. Re-plan with a charging stop?</div>
       </div>
       <div class="trace">
         <p style="margin-top:0"><b>What happened behind that first answer</b></p>
         <ol>
           <li>Speech transcribed locally by <b>Whisper</b>.</li>
           <li>A local LLM (<b>Qwen 3.5 4B via Ollama</b>) picks the tool <code>check_range_to("Mysore")</code>. It never invents numbers.</li>
-          <li>The <b>range model</b> predicts Wh/km for every road segment under today's heat, AC, driving style and battery age.</li>
+          <li>The <b>battery-health model</b> (trained on real NASA cells) reads the car's battery log: 77% health.</li>
+          <li>The <b>range model</b> predicts Wh/km for every road segment under today's heat, AC, driving style and that battery health.</li>
           <li>The <span class="guard">battery guard</span> compares predicted arrival charge with a 10% reserve: fail.</li>
           <li>The <b>planner</b> searches real OpenStreetMap roads and chargers and picks the fastest plan that keeps every leg above the floor.</li>
           <li>The LLM phrases the reply using only those facts; <b>Piper</b> speaks it.</li>
@@ -137,26 +139,32 @@ footer { padding: 40px 0 56px; color: var(--ink-3); font-size: 14.5px; }
 <section>
   <div class="wrap">
     <h2>The app</h2>
-    <p>The assistant chat sits on the left. The right side keeps the live range always visible and splits
-      everything else into four tabs: Trip, Battery, Ownership and Simulator.</p>
+    <p>The companion app is a phone app: Home, Trip, Volt (chat and voice), Battery and Ownership. Demo controls sit
+      in a simulator panel beside the phone, outside the app. A switch at the top opens the fleet console for a
+      rental operator.</p>
     <div class="shots">
       <figure>
-        <img src="images/trip.png" width="1440" height="1300" loading="lazy"
-          alt="Trip tab showing a Bengaluru to Mysuru route on real OpenStreetMap roads, with a charging stop at Magenta ChargeGrid and a stop-by-stop itinerary" />
-        <figcaption>Trip: the route follows real roads from OpenStreetMap; the charging stop was chosen automatically.</figcaption>
+        <img src="images/trip.png" width="1200" height="1000" loading="lazy"
+          alt="Trip screen: a Bengaluru to Mysuru route on real OpenStreetMap roads, a charging stop at Magenta ChargeGrid, trip totals and a range ribbon comparing 79 km personal range with a 144 km brochure estimate" />
+        <figcaption>Trip: real roads, an automatically chosen charging stop, and the range ribbon (79 km for today against a 144 km brochure figure).</figcaption>
       </figure>
       <div class="pair">
         <figure>
-          <img src="images/battery.png" width="1440" height="1000" loading="lazy"
-            alt="Battery tab with state-of-health trend, a breakdown of why range is lower than expected, and charging history" />
-          <figcaption>Battery: health trend, range-drop explanation, charging history.</figcaption>
+          <img src="images/battery.png" width="1200" height="1000" loading="lazy"
+            alt="Battery screen: 77% health estimated from a real NASA battery log, about 2.2 years to 70%, and a breakdown of why range is 79 km instead of 178 km" />
+          <figcaption>Battery: health read from a real battery log (77%; the lab measured 87.5%), remaining life, and why range is low.</figcaption>
         </figure>
         <figure>
-          <img src="images/ownership.png" width="1440" height="1000" loading="lazy"
-            alt="Ownership tab with charging-habit coaching, running cost per km and a resale projection" />
-          <figcaption>Ownership: charging coach, cost per km, resale projection.</figcaption>
+          <img src="images/ownership.png" width="1200" height="1000" loading="lazy"
+            alt="Ownership screen: cost per km against petrol, eco-driving and charging coaching, resale value and a two-year projection by charging habit" />
+          <figcaption>Ownership: cost against petrol, driving and charging coach, resale and a 2-year projection.</figcaption>
         </figure>
       </div>
+      <figure>
+        <img src="images/fleet.png" width="1300" height="1250" loading="lazy"
+          alt="Fleet console: rental demand heatmap by zone and hour, suggested car moves, battery-life comparison of allocation policies, and today's bookings" />
+        <figcaption>Fleet console: demand forecast, suggested car moves, and battery-aware allocation (healthiest batteries on the longest trips).</figcaption>
+      </figure>
     </div>
   </div>
 </section>
@@ -189,7 +197,7 @@ footer { padding: 40px 0 56px; color: var(--ink-3); font-size: 14.5px; }
 
           <rect x="460" y="40" width="120" height="56" rx="10" fill="var(--panel-2)" stroke="var(--line)" />
           <text x="520" y="64" text-anchor="middle" font-weight="600">Router</text>
-          <text x="520" y="82" text-anchor="middle" font-size="12" fill="var(--ink-2)">14 tools</text>
+          <text x="520" y="82" text-anchor="middle" font-size="12" fill="var(--ink-2)">16 tools</text>
 
           <rect x="610" y="30" width="150" height="76" rx="10" fill="var(--charge-soft)" stroke="var(--charge)" stroke-width="2" />
           <text x="685" y="62" text-anchor="middle" font-weight="700" fill="var(--charge)">Battery guard</text>
@@ -201,13 +209,13 @@ footer { padding: 40px 0 56px; color: var(--ink-3); font-size: 14.5px; }
 
           <rect x="470" y="160" width="140" height="56" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" />
           <text x="540" y="184" text-anchor="middle" font-weight="600">Battery core</text>
-          <text x="540" y="202" text-anchor="middle" font-size="12" fill="var(--ink-2)">SOH + range (PyTorch)</text>
+          <text x="540" y="202" text-anchor="middle" font-size="12" fill="var(--ink-2)">health, range, RUL</text>
           <rect x="630" y="160" width="120" height="56" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" />
           <text x="690" y="184" text-anchor="middle" font-weight="600">Route planner</text>
           <text x="690" y="202" text-anchor="middle" font-size="12" fill="var(--ink-2)">charger search</text>
           <rect x="770" y="160" width="130" height="56" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" />
-          <text x="835" y="184" text-anchor="middle" font-weight="600">Companion app</text>
-          <text x="835" y="202" text-anchor="middle" font-size="12" fill="var(--ink-2)">coach, cost, resale</text>
+          <text x="835" y="184" text-anchor="middle" font-weight="600">Companion + fleet</text>
+          <text x="835" y="202" text-anchor="middle" font-size="12" fill="var(--ink-2)">coach, resale, fleet</text>
         </g>
         <g stroke="var(--ink-3)" stroke-width="1.6" fill="none" marker-end="url(#arr)">
           <path d="M120 68 H148" /><path d="M270 68 H298" /><path d="M430 68 H458" />
@@ -232,7 +240,9 @@ footer { padding: 40px 0 56px; color: var(--ink-3); font-size: 14.5px; }
       <div class="card"><h3>Mid-drive re-planning</h3><p>Add a detour while driving; the stop that minimises the detour is chosen and charging is re-planned from where the car is.</p><p class="ex">"Also stop at a McDonald's on the way"</p></div>
       <div class="card"><h3>Proactive nudges</h3><p>Unprompted alerts with one-tap answers when the state changes.</p><p class="ex">"18% left, 55 km from home. Route via a charger?"</p></div>
       <div class="card"><h3>Range-drop explanation</h3><p>Exact Shapley values over weather, AC, driving style, load and battery ageing, in kilometres.</p><p class="ex">"Why is my range lower than usual?"</p></div>
-      <div class="card"><h3>Companion app</h3><p>Personalized SOH and range, charging-habit coaching, cost per km against petrol, and an SOH-driven resale estimate with a two-year habit projection.</p></div>
+      <div class="card"><h3>Eco-driving coaching</h3><p>Harsh braking and acceleration detected from a simulated OBD-II/CAN stream, with the range you'd gain by driving smoothly.</p><p class="ex">"Am I braking too hard?"</p></div>
+      <div class="card"><h3>Companion app</h3><p>Battery health and personal range, charging-habit coaching, cost per km against petrol, and an SOH-driven resale estimate with a two-year habit projection.</p></div>
+      <div class="card"><h3>Fleet console</h3><p>Demand forecast by zone, hour and weather, suggested car moves, and battery-aware allocation: healthy batteries take long trips, worn ones short city rentals.</p><p class="ex">"Which fleet cars should I move?"</p></div>
       <div class="card"><h3>Assisted driving and pre-cooling <span class="stub-tag">stubs</span></h3><p>They log what they would do (show the left turn camera, pre-cool on plug power) without touching hardware. Pre-cooling is still guard-checked.</p></div>
     </div>
   </div>
@@ -241,24 +251,30 @@ footer { padding: 40px 0 56px; color: var(--ink-3); font-size: 14.5px; }
 <section>
   <div class="wrap">
     <h2>The battery-intelligence core</h2>
-    <p>No real EV telemetry was available, so all training data is synthetic, generated to resemble public datasets
-      (NASA PCoE and CALCE ageing curves) and plausible vehicle physics. Both models are small PyTorch MLPs.</p>
+    <p>One core, used by the assistant, the app, the planner and the fleet. The battery-health model is trained on
+      <b>real</b> batteries: NASA Ames' public Li-ion ageing dataset (34 cells). Seven cells are held out and never
+      trained on. The demo car and the fleet replay those unseen cells' battery logs, so every health figure in the
+      app is a genuine prediction on real data.</p>
     <div class="stats">
-      <div class="stat"><strong class="num">0.55%</strong><span>SOH mean absolute error on battery cells held out from training</span></div>
-      <div class="stat"><strong class="num">4.2%</strong><span>Wh/km error for the range model, about the noise level built into the data</span></div>
-      <div class="stat"><strong class="num">32</strong><span>model evaluations per range explanation (exact Shapley over 5 factors)</span></div>
-      <div class="stat"><strong class="num">49,435 km</strong><span>of real Karnataka roads from OpenStreetMap, routed offline</span></div>
+      <div class="stat"><strong class="num">4.8 pts</strong><span>battery-health error (MAE) on 7 real cells the model never saw</span></div>
+      <div class="stat"><strong class="num">0% vs 23%</strong><span>trips stranded: battery-aware planner vs a router trusting the brochure range (108 trips)</span></div>
+      <div class="stat"><strong class="num">17 / 17</strong><span>assistant tasks right with the local LLM (3.5 s median reply) and with the rule-based backup</span></div>
+      <div class="stat"><strong class="num">11 vs 17</strong><span>fleet cars below 70% health after a simulated year: health-aware vs first-available allocation</span></div>
     </div>
     <div class="tablewrap">
     <table>
-      <thead><tr><th>Model</th><th>Inputs</th><th>Output</th><th>Used by</th></tr></thead>
+      <thead><tr><th>Model</th><th>Inputs</th><th>Output</th><th>Trained on</th><th>Held-out result</th></tr></thead>
       <tbody>
-        <tr><td>State of health</td><td>Cycle count, temperature, charge C-rate, fast-charge ratio, depth of discharge, internal resistance, voltage and temperature features</td><td>SOH (capacity vs new)</td><td>Usable kWh, resale value, dashboard</td></tr>
-        <tr><td>Energy consumption</td><td>Temperature, HVAC mode, driving style, speed, gradient, load, road type, SOH</td><td>Wh per km</td><td>Personalized range, per-edge route energy, attribution</td></tr>
+        <tr><td>Battery health (SOH)</td><td>10 battery-system signals per cycle; resistance, voltage and temperature as change since the battery was new</td><td>SOH (capacity vs rated)</td><td>Real NASA cells</td><td>4.8 points MAE on 7 unseen real cells. The same network trained on synthetic cells is 18.6–25.8 points off on real ones, so the app ships the real-trained model.</td></tr>
+        <tr><td>Energy use</td><td>Temperature, AC/heater, driving style, speed, load, road type, battery health</td><td>Wh per km</td><td>Synthetic fleet trips, fine-tuned on the owner's own trips</td><td>4.2% MAPE; personalising cuts error on the owner's trips from 10.5 to 9.1 Wh/km</td></tr>
+        <tr><td>Rental demand</td><td>Zone, hour, weekday, temperature, rain</td><td>Bookings per zone-hour</td><td>Synthetic fleet history</td><td>33% closer to the true booking rate than a zone-and-hour average</td></tr>
       </tbody>
     </table>
     </div>
-    <p style="margin-top:14px">Predicting Wh/km rather than range directly is what makes range personalized: at 34 °C the same 46% charge is about 125 km with the AC off and 88 km with it on, and the model can say exactly how much each factor costs.</p>
+    <p style="margin-top:14px">Range explanations use exact Shapley values over AC, battery ageing, driving style, temperature
+      and load. Remaining life and the two-year projection come from a semi-empirical ageing formula; that part is not learned.
+      Every number above is regenerated by <code>python -m eval.run_all</code>; see
+      <a href="https://github.com/ProblematicPP/ev-voice-assistant/blob/main/results/metrics.md">results/metrics.md</a>.</p>
   </div>
 </section>
 
@@ -273,6 +289,7 @@ uv pip install --python .venv\Scripts\python.exe torch --index-url https://downl
 .venv\Scripts\python.exe -m data_gen.generate_all
 .venv\Scripts\python.exe -m training.train_soh
 .venv\Scripts\python.exe -m training.train_range
+.venv\Scripts\python.exe -m training.train_demand
 ollama pull qwen3.5:4b
 .venv\Scripts\python.exe -m uvicorn app.main:app --port 8000
 
@@ -286,11 +303,12 @@ npm run dev        # open http://localhost:5173</code></pre>
   <div class="wrap">
     <h2>Limitations</h2>
     <ul class="limits">
-      <li>All battery, trip and charging data is synthetic; model accuracy figures describe fit to that data, not real vehicles.</li>
-      <li>Roads, places and charger locations are real OpenStreetMap data for Karnataka, but OSM maps only 37 car chargers and almost never their power or price, so those values are estimated. Long trips can fail on these mapping gaps.</li>
-      <li>Road speeds are estimated from road class and city traffic, and OSM has no elevation, so hills are ignored.</li>
-      <li>Assisted driving and pre-cooling are logging stubs for a future hardware phase.</li>
-      <li>Single vehicle, single owner. Fleet features are out of scope.</li>
+      <li>Battery-health data is real, but from small NASA lab cells that age about 6&times; faster per cycle than a car pack. A production model would need car-pack data. On the demo car's cell the model estimates 77% where the lab measured 87.5%.</li>
+      <li>Trips, owner history, fleet demand and the range model's training data are synthetic. The routing and fleet comparisons are simulations, not field trials.</li>
+      <li>Remaining life and the two-year projection use a hand-tuned ageing formula, not a fitted model.</li>
+      <li>Roads, places and charger locations are real OpenStreetMap data, but OSM maps few Karnataka chargers and rarely their power or price, so those are estimated. 56 labelled demo chargers fill the gaps.</li>
+      <li>Charging stops are chosen by graph search with learned energy costs, not reinforcement learning. Traffic and charger queues are simulated, and there is no elevation data.</li>
+      <li>OBD-II/CAN, assisted driving and pre-cooling are stubs for a future hardware phase.</li>
     </ul>
   </div>
 </section>
