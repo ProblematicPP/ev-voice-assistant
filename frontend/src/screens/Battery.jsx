@@ -70,7 +70,7 @@ export default function Battery({ state, companion, explain }) {
       </section>
       <div className="stat-row">
         <div><strong className="num">{b.cycle_count}</strong><small>charge cycles</small></div>
-        <div><strong className="num">{pct(b.fast_charge_ratio)}</strong><small>fast charging</small></div>
+        <div><strong className="num">{pct(b.charging_habit)}</strong><small>fast charging</small></div>
         <div><strong className="num">{state.range.wh_per_km}</strong><small>Wh per km now</small></div>
       </div>
 

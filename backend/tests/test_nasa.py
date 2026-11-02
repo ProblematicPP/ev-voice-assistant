@@ -22,8 +22,8 @@ def test_nasa_cycles_have_the_model_features():
 def test_real_trained_model_beats_baselines_on_unseen_real_cells():
     from training import validate_soh_nasa as v
     from app.battery_core.nn import TabularRegressor
-    df = pd.read_csv(NASA)
+    df = v.load()
     classic = df[df.cell_id.isin(v.CLASSIC)]
-    s, _ = v.evaluate(classic, [["B0007"]], TabularRegressor.load(v.MODEL_PATH))
+    s, _ = v.evaluate(classic, [["B0007"]], TabularRegressor.load(v.SYNTHETIC_MODEL_PATH))
     assert s["real"]["mae_pct_points"] < s["cycle_only"]["mae_pct_points"]
     assert s["real"]["mae_pct_points"] < s["mean"]["mae_pct_points"]

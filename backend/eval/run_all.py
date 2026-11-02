@@ -29,7 +29,6 @@ from app.config import DATA_DIR, RESERVE_SOC, VEHICLE
 from app.context import AppContext
 from app.routing.planner import STOP_OVERHEAD_MIN, charge_minutes
 from training.train_range import mixed_predict
-from training.train_soh import split_cells
 
 RESULTS = Path(__file__).resolve().parents[2] / "results"
 
@@ -41,10 +40,16 @@ def mae_mape(y, p):
 
 # -- 1. SOH and range accuracy --------------------------------------------------------------
 def eval_models(ctx) -> dict:
-    cells = pd.read_csv(DATA_DIR / "cell_cycles.csv")
-    _, _, test_cells = split_cells(cells.cell_id.unique())
-    te = cells[cells.cell_id.isin(test_cells)]
-    soh_mae, soh_mape = mae_mape(te.soh, ctx.battery.soh_model.predict(te))
+    # Shipped SOH model on the 7 real NASA cells it never trained on; each cell's log is fed from new
+    from data_gen.nasa_battery import TEST_CELLS
+    nasa = pd.read_csv(DATA_DIR / "nasa_cycles.csv").sort_values(["cell_id", "cycle"])
+    te = nasa[nasa.cell_id.isin(TEST_CELLS)]
+    pred = np.concatenate([ctx.battery.soh_model.predict_log(g) for _, g in te.groupby("cell_id", sort=False)])
+    soh_mae, soh_mape = mae_mape(te.soh, pred)
+    test_cells = TEST_CELLS
+    per_cell = {c: 100 * float(np.mean(np.abs(ctx.battery.soh_model.predict_log(g) - g.soh)))
+                for c, g in te.groupby("cell_id", sort=False)}
+    car = ctx.battery.profile.get("battery_log", {})
 
     trips = pd.read_csv(DATA_DIR / "trips.csv")
     val = trips[~(np.random.default_rng(1).random(len(trips)) < 0.8)]          # same split as training
@@ -58,7 +63,9 @@ def eval_models(ctx) -> dict:
     p_mae, p_mape = mae_mape(held.wh_per_km, mixed_predict(personal, held))
     return {
         "soh": {"test_cells": len(test_cells), "test_cycles": int(len(te)), "mae_pct_points": 100 * soh_mae,
-                "mape_pct": 100 * soh_mape},
+                "mape_pct": 100 * soh_mape, "per_cell_mae_pct_points": per_cell,
+                "demo_car": {"cell": car.get("source"), "estimate_pct": 100 * ctx.battery.soh_now,
+                             "lab_measured_pct": 100 * car.get("lab_measured_soh", float("nan"))}},
         "range_fleet": {"val_trips": int(len(val)), "mae_wh_km": r_mae, "mape_pct": 100 * r_mape},
         "range_owner": {"held_out_trips": int(len(held)), "fleet_mae_wh_km": f_mae, "fleet_mape_pct": 100 * f_mape,
                         "personal_mae_wh_km": p_mae, "personal_mape_pct": 100 * p_mape},
@@ -70,8 +77,8 @@ def eval_nasa() -> dict:
     if not (DATA_DIR / "nasa_cycles.csv").exists():
         return {"skipped": "run python -m data_gen.nasa_battery first (downloads ~210 MB)"}
     from training import validate_soh_nasa as v
-    df = pd.read_csv(DATA_DIR / "nasa_cycles.csv")
-    synthetic = TabularRegressor.load(v.MODEL_PATH)
+    df = v.load()
+    synthetic = TabularRegressor.load(v.SYNTHETIC_MODEL_PATH)
     classic, _ = v.evaluate(df[df.cell_id.isin(v.CLASSIC)], [[c] for c in v.CLASSIC], synthetic)
     cells = np.random.default_rng(0).permutation(sorted(df.cell_id.unique()))
     every, _ = v.evaluate(df, [list(f) for f in np.array_split(cells, 5)], synthetic)
@@ -282,8 +289,11 @@ def report(m: dict) -> str:
         "# Evaluation results", "",
         f"Generated {m['generated']} by `python -m eval.run_all`. Hardware: GPU {m['gpu']}.", "",
         "## 1. SOH and range accuracy (held-out data)", "",
+        "Per held-out cell (SOH points): " + ", ".join(f"{c} {fmt(v, 1)}" for c, v in s["per_cell_mae_pct_points"].items())
+        + f". Demo car (replays {s['demo_car']['cell']}): estimate {fmt(s['demo_car']['estimate_pct'], 1)}% vs "
+        f"lab-measured {fmt(s['demo_car']['lab_measured_pct'], 1)}%.", "",
         "| Model | Held-out set | MAE | MAPE |", "|---|---|---|---|",
-        f"| SOH MLP (10 BMS features) | {s['test_cells']} unseen cells ({s['test_cycles']} cycles) | "
+        f"| SOH MLP (shipped), trained on real NASA cells | {s['test_cells']} unseen **real** cells ({s['test_cycles']} cycles) | "
         f"{fmt(s['mae_pct_points'])} %-points SOH | {fmt(s['mape_pct'])}% |",
         f"| Range MLP, fleet | {rf['val_trips']} unseen trip segments | {fmt(rf['mae_wh_km'], 1)} Wh/km | {fmt(rf['mape_pct'], 1)}% |",
         f"| Range MLP, fleet model on owner's trips | {ro['held_out_trips']} held-out owner trips | "

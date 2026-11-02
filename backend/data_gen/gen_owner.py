@@ -6,7 +6,8 @@ pack's BMS cycle log since purchase.
 Outputs:
   data/owner_trips.csv          the owner's recent trips (drives personalization)
   data/charging_history.csv     charging sessions (drives habit coaching / cost)
-  data/vehicle_bms_history.csv  per-cycle BMS features since purchase (SOH model input)
+  data/vehicle_bms_history.csv  per-cycle BMS features since new, replayed from a REAL held-out NASA
+                                cell (SOH model input; needs data_gen.nasa_battery first)
   data/vehicle_profile.json     static vehicle + derived owner profile
 """
 import json
@@ -170,9 +171,32 @@ def simulate_bms_history(seed=5, fast_share=0.22):
     return df, state, days
 
 
+CAR_CELL = "B0007"          # the most-studied NASA cell; held out from SOH training
+CAR_SOH_NOW = 0.88          # replay the cell's log up to the first cycle it measured at or below this
+
+
+def real_bms_log(age_days: int) -> tuple[pd.DataFrame, float]:
+    """The car's BMS log: a REAL NASA cell's cycles from new, replayed up to ~88% measured health.
+
+    The model only ever sees the BMS signals; the lab-measured SOH is kept aside (returned) so the
+    estimate can be compared with the truth. Dates are spread from purchase to today.
+    """
+    from app.battery_core.ageing import SOH_FEATURES
+    cells = pd.read_csv(DATA_DIR / "nasa_cycles.csv")
+    log = cells[cells.cell_id == CAR_CELL].sort_values("cycle").reset_index(drop=True)
+    end = int(np.flatnonzero(log.soh.to_numpy() <= CAR_SOH_NOW)[0]) + 1
+    log = log.iloc[:end]
+    out = log[SOH_FEATURES].copy()
+    out.insert(0, "date", pd.date_range(end=pd.Timestamp(date.today()), periods=end,
+                                        freq=f"{max(1, age_days // end)}D").date.astype(str))
+    return out, float(log.soh.iloc[-1])
+
+
 def main():
     DATA_DIR.mkdir(parents=True, exist_ok=True)
-    bms, ageing_state, age_days = simulate_bms_history()
+    # Synthetic ageing history: only its accumulated stress feeds the habit-based degradation projection
+    _, ageing_state, age_days = simulate_bms_history()
+    bms, measured_soh = real_bms_log(age_days)
     bms.to_csv(DATA_DIR / "vehicle_bms_history.csv", index=False)
 
     trips, sessions, final_soc = simulate_owner()
@@ -183,7 +207,9 @@ def main():
     profile = {
         **VEHICLE,
         "odometer_km": round(age_days * 31.5),
-        "bms_cycle_count": ageing_state.cycle,
+        "bms_cycle_count": int(bms.cycle.iloc[-1]),
+        "battery_log": {"source": f"NASA PCoE cell {CAR_CELL} (real; held out from SOH training)",
+                        "cycles": len(bms), "lab_measured_soh": round(measured_soh, 4)},
         "ageing_state": {"cycle": ageing_state.cycle, "cum_stress": ageing_state.cum_stress,
                          "fast_cycles": ageing_state.fast_cycles},
         # Personalization derived from the owner's own trips
@@ -193,7 +219,8 @@ def main():
         "soc_at_generation": round(final_soc, 3),
     }
     (DATA_DIR / "vehicle_profile.json").write_text(json.dumps(profile, indent=2))
-    print(f"vehicle_bms_history.csv: {len(bms)} cycles")
+    print(f"vehicle_bms_history.csv: {len(bms)} real cycles from NASA {CAR_CELL} "
+          f"(lab-measured SOH at the end {measured_soh:.3f})")
     print(f"owner_trips.csv: {len(trips)} trips, {km_total:.0f} km")
     print(f"charging_history.csv: {len(sessions)} sessions "
           f"({(sessions.charger_type == 'dc_fast').sum()} DC fast)")

@@ -113,6 +113,7 @@ class AppContext:
             "events": st.events[-12:][::-1],
             "pending_offer": st.pending_offer,
             "inputs": {**self.inputs.describe(), "weather_now": st.weather},
+            "battery_log": self.battery.profile.get("battery_log"),
         }
 
 

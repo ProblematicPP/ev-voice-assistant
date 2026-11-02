@@ -20,19 +20,19 @@ Clicks are in *italics*. "Simulator" means the panel to the right of the phone.
 
 | # | Time | Do / say | What the panel should see |
 |---|---|---|---|
-| 1 | 0:00 | *Bottom bar → Trip*. Point out the range ribbon: about 93 km for today's heat and AC against a 144 km brochure estimate. | One battery core: personalised range, not a fixed km-per-percent. |
-| 2 | 0:20 | *Volt (centre button)* → **"Will I make it to Mysore without stopping?"** | "No… 148 km away… run out about 52 km short. One ~19-minute stop at *<charger>* fixes it. Want me to start that route?" |
-| 3 | 0:45 | **"Yes"** | The app opens Trip: the route on real OSM roads, the orange charging stop, a 2 h 50 min total, about 15% on arrival, the ₹ cost, and the ribbon marking the stop and destination. |
-| 4 | 1:15 | *Simulator → Drive forward +30 km.* Then set *Outside temperature 44 °C* and *Load 300 kg*. | **Proactive nudge**, unprompted and spoken: "Heads up: at 44 °C with AC on, you'd reach Mysuru at 8%… below the safe reserve. Re-plan with a charging stop?" It shows as a pop-up and on Home with Yes / Not now. |
+| 1 | 0:00 | *Bottom bar → Trip*. Point out the range ribbon: about 79 km for today's heat, AC and this battery's health, against a 144 km brochure estimate. | One battery core: personalised range, not a fixed km-per-percent. |
+| 2 | 0:20 | *Volt (centre button)* → **"Will I make it to Mysore without stopping?"** | "No… 148 km away… run out about 66 km short. A ~32-minute stop at *<charger>* fixes it. Want me to start that route?" |
+| 3 | 0:45 | **"Yes"** | The app opens Trip: the route on real OSM roads, the orange charging stop, a total of about 3 h 10 min, about 15% on arrival, the ₹ cost, and the ribbon marking the stop and destination. |
+| 4 | 1:15 | *Simulator → Drive forward +30 km.* Then set *Outside temperature 44 °C* and *Load 300 kg*. | **Proactive nudge**, unprompted and spoken: "Heads up: at 44 °C with AC on, you'd reach Mysuru at 7%… below the safe reserve. Re-plan with a charging stop?" It shows as a pop-up and on Home with Yes / Not now. |
 | 5 | 1:45 | **"Yes"** (or tap the Yes button) | Re-plans from the current position with an extra top-up. The battery guard's verdict is shown in Simulator → *Last assistant turn* (`guard: modify`). |
 | 6 | 2:10 | **"Also stop at a McDonald's on the way."** | **Mid-drive detour**: a McDonald's on the way is added and charging is recalculated. The green stop marker appears on the map. |
-| 7 | 2:40 | *Bottom bar → Battery.* | SOH ≈ 89%, usable kWh, cycles, % fast charging, years until 70%, the SOH trend since purchase, and the "Why 93 km and not 177 km" Shapley bars. |
+| 7 | 2:40 | *Bottom bar → Battery.* | SOH ≈ 77%, from the model reading a **real** battery's log (NASA cell B0007, never trained on); the simulator panel shows the lab-measured 87.5% beside it. Also usable kWh, cycles, % fast charging, years until 70%, the SOH trend, and the "Why 79 km and not 178 km" Shapley bars. |
 | 8 | 3:00 | **"Why is my range lower today?"** | The answer quotes the same Shapley breakdown (AC, battery ageing, heat, driving style). |
 | 9 | 3:20 | *Bottom bar → Ownership.* Then drag *Simulator → Charging habit* from about 30% to 80% fast. | ₹/km vs petrol and the monthly saving, driving and charging coach tips, and resale value. The 2-year projection ("Your current habit") and Battery's years-to-70% change live with the slider. |
 | 10 | 3:50 | Optional: **"Am I braking too hard?"** | Eco-driving coaching from the simulated CAN telemetry: harsh brakes per 100 km and km gained by driving smoothly. |
-| 11 | 4:05 | *Top switch → Fleet console.* | Demand heatmap (morning and evening peaks, airport busy round the clock), suggested moves with missed rentals saved, battery life **+40%** with health-aware allocation, and today's bookings (long trips get the healthiest packs). |
+| 11 | 4:05 | *Top switch → Fleet console.* | Demand heatmap (morning and evening peaks, airport busy round the clock), suggested moves with missed rentals saved, health-aware allocation: **11 cars below 70% after a year instead of 17**, about 6% slower battery ageing, and today's bookings (long trips get the healthiest packs). |
 | 12 | 4:35 | *Today's bookings → Route* on a long trip (e.g. B013 to Hassan). | Round-trip rental plan on the same charging-aware planner, using that car's own battery health. |
-| 13 | 4:50 | Close with `results/metrics.md` if asked for numbers. | Held-out SOH/range error, 0% vs 14.8% stranded against the brochure-range router, assistant 17/17 tasks at ~3.6 s median, +40% fleet battery life. |
+| 13 | 4:50 | Close with `results/metrics.md` if asked for numbers. | Battery health on 7 unseen **real** cells: 4.8 points MAE. 0% vs 23% stranded against the brochure-range router. Assistant 17/17 tasks at ~3.5 s median. Fleet: 11 vs 17 cars below 70%. |
 
 ## Things that can misbehave, and what to do
 
@@ -48,5 +48,6 @@ Clicks are in *italics*. "Simulator" means the panel to the right of the phone.
 | No spoken replies | The browser blocks audio until the page is clicked | Click the page once; check the speaker icon on the Volt screen. |
 | Fleet "Battery life" says "Simulating…" | The first load runs a one-year simulation (~6 s) | Open the Fleet console once before the panel arrives. |
 | Something got into a strange state | | *Simulator → Reset*, then restart from step 2. Scenarios also reset everything. |
+| A panel member notices Battery says 77% but the simulator says the lab measured 87.5% | That's the model's real error on a battery it never trained on | Say so: the model estimates 4.8 points off on average across 7 unseen real cells, and this cell is one of its harder ones (it underestimates it). A real car only ever shows the estimate. |
 
 Backup if the backend dies: restart it (`uvicorn app.main:app --port 8000`). It takes about 30 s to warm up, and the UI reconnects by itself.

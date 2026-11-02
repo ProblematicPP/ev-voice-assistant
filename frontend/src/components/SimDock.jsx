@@ -40,6 +40,10 @@ export default function SimDock({ state, network, health, connected, messages })
             </dd>
             <dt>Traffic</dt><dd>Simulated rush hours (adds to ETA)</dd>
             <dt>Chargers</dt><dd>Simulated queues and outages</dd>
+            <dt>Battery log</dt>
+            <dd>{state?.battery_log
+              ? `${state.battery_log.source}. Model estimate ${state.battery.soh_pct}% vs lab-measured ${(state.battery_log.lab_measured_soh * 100).toFixed(1)}%`
+              : "Synthetic"}</dd>
             <dt>Telemetry</dt>
             <dd>{state?.vehicle?.telemetry
               ? `Simulated CAN bus: last drive ${state.vehicle.telemetry.drive.km} km, ${state.vehicle.telemetry.drive.harsh_brakes} harsh brakes, ${state.vehicle.telemetry.drive.harsh_accels} hard starts`

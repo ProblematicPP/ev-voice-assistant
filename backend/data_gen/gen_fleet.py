@@ -2,7 +2,7 @@
 
 Outputs:
   data/fleet_vehicles.csv   40 vehicles: zone, ageing stress, fast-charge habit, current charge
-  data/fleet_bms.csv        last 15 BMS cycles per vehicle (the core's SOH model reads these)
+  data/fleet_bms.csv        each car's BMS log since new, replayed from a real held-out NASA cell
   data/fleet_demand.csv     180 days x 24 h x 12 zones of rental bookings with weather
   data/fleet_bookings.csv   today's booking requests (long-haul and short urban loops)
 
@@ -25,6 +25,7 @@ ZONES = {  # place id -> (base bookings/hour at peak, character)
 }
 LONG_HAUL = ["mysuru", "hassan", "tumakuru", "chikkaballapur", "mandya", "kolar", "channapatna", "ramanagara"]
 N_VEHICLES = 40
+IN_SERVICE_SOH = 0.70
 DAYS = 180
 
 
@@ -78,6 +79,17 @@ def demand(rng, weather: pd.DataFrame) -> pd.DataFrame:
 
 
 def vehicles(rng):
+    """Each car's BMS log is a REAL held-out NASA cell from new, cut at a random point of its life
+    (so the SOH model never trained on it). The synthetic ageing run only supplies the
+    accumulated stress used by the habit-based remaining-life formula."""
+    from app.battery_core.ageing import SOH_FEATURES
+    from data_gen.nasa_battery import TEST_CELLS
+    cells = pd.read_csv(DATA_DIR / "nasa_cycles.csv")
+    # A rental fleet retires packs below the usual 70% warranty threshold, so cars are cut at a point
+    # where the lab measured >= 70%; cells that never measured that much (4 degC runs) are not used.
+    in_service = [c for c in TEST_CELLS
+                  if (np.flatnonzero(cells[cells.cell_id == c].sort_values("cycle").soh.to_numpy() >= IN_SERVICE_SOH)
+                      >= 9).any()]
     rows, bms = [], []
     zones = list(ZONES)
     for i in range(N_VEHICLES):
@@ -89,10 +101,17 @@ def vehicles(rng):
         dis_c = np.clip(rng.normal(0.4, 0.06, n), 0.2, 0.9)
         df, state = simulate_cycles(n, temp, charge_c, dod, dis_c, rng=rng)
         vid = f"EV{i + 1:03d}"
-        tail = df.drop(columns=["capacity_ah", "soh"]).tail(15).copy()
-        tail.insert(0, "vehicle_id", vid)
-        bms.append(tail)
+        cell = in_service[i % len(in_service)]
+        log = cells[cells.cell_id == cell].sort_values("cycle").reset_index(drop=True)
+        ok = np.flatnonzero(log.soh.to_numpy() >= IN_SERVICE_SOH)
+        ok = ok[ok >= 9]                                      # at least 10 cycles of history
+        cut = int(rng.choice(ok)) + 1
+        part = log.iloc[:cut]
+        rec = part[SOH_FEATURES].copy()
+        rec.insert(0, "vehicle_id", vid)
+        bms.append(rec)
         rows.append({"vehicle_id": vid, "zone": zones[i % len(zones)], "cycles": state.cycle,
+                     "battery_cell": cell, "lab_measured_soh": round(float(part.soh.iloc[-1]), 4),
                      "cum_stress": round(state.cum_stress, 2), "fast_charge_share": round(fast, 3),
                      "soc": round(float(rng.uniform(0.35, 0.95)), 2),
                      "status": "idle" if rng.random() < 0.8 else "rented"})

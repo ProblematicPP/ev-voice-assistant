@@ -39,6 +39,20 @@ URL = "https://phm-datasets.s3.amazonaws.com/NASA/5.+Battery+Data+Set.zip"
 RAW = DATA_DIR / "nasa_raw"
 RATED_AH = 2.0
 
+# Fixed split by cell. TEST cells are never trained on: they score the shipped SOH model and are
+# the only cells whose logs the demo car and the fleet replay. Chosen to span conditions:
+# 24 degC 2 A (B0007), 24 degC square wave (B0027), 43 degC 4 A (B0031), 24 degC 2 A long run (B0036),
+# 15 degC (B0043) and 4 degC (B0047, B0055).
+TEST_CELLS = ["B0007", "B0027", "B0031", "B0036", "B0043", "B0047", "B0055"]
+VAL_CELLS = ["B0026", "B0030", "B0039", "B0044", "B0054"]
+
+
+def split(df):
+    """(train, val, test) frames of nasa_cycles.csv, split by cell."""
+    test = df.cell_id.isin(TEST_CELLS)
+    val = df.cell_id.isin(VAL_CELLS)
+    return df[~test & ~val], df[val], df[test]
+
 
 def fetch() -> Path:
     """Download and unpack once; returns the folder holding the B00xx.mat files."""

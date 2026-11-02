@@ -19,8 +19,9 @@ Fed by: simulated OBD-II/CAN telemetry, charging history, weather (live Open-Met
 ```
 
 Everything runs locally, with no API keys and no paid services. Live weather is optional and falls back
-to the simulator offline. All battery, owner and fleet data is synthetic; roads, places and most charger
-locations are real (OpenStreetMap).
+to the simulator offline. The battery-health model is trained and tested on **real** battery-ageing data
+(NASA), and the demo car and fleet replay real batteries' logs. Trips, owner history and fleet demand are
+synthetic. Roads, places and most charger locations are real (OpenStreetMap).
 
 A Volt turn:
 ```
@@ -53,18 +54,19 @@ uv venv --python 3.12 .venv
 uv pip install --python .venv\Scripts\python.exe -r requirements.txt
 uv pip install --python .venv\Scripts\python.exe torch --index-url https://download.pytorch.org/whl/cpu
 
-# Data: downloads the Karnataka OSM extract (~130 MB, once), builds the road graph, places demo
-# chargers, and generates cells, trips, owner history and the rental fleet (~6-8 min)
+# Data: downloads the Karnataka OSM extract (~130 MB) and NASA's real battery-ageing data (~210 MB),
+# once; builds the road graph, places demo chargers, and generates trips, owner history and the
+# rental fleet (~8-10 min). The demo car and the fleet replay real NASA cells' battery logs.
 .venv\Scripts\python.exe -m data_gen.generate_all
 
 # Models (about 1 minute in total on CPU). Weights + scalers are saved in backend/models/
-.venv\Scripts\python.exe -m training.train_soh       # SOH MLP, split by cell
+.venv\Scripts\python.exe -m training.train_soh       # SOH MLP on real NASA cells (+ synthetic one for comparison)
 .venv\Scripts\python.exe -m training.train_range     # fleet Wh/km MLP + owner fine-tune
 .venv\Scripts\python.exe -m training.train_demand    # fleet demand forecaster
 
-# Optional: real-battery validation on NASA's ageing data (~210 MB download, ~1.5 min)
-.venv\Scripts\python.exe -m data_gen.nasa_battery
-.venv\Scripts\python.exe -m training.validate_soh_nasa
+# Optional: the real-battery experiments behind the SOH model (~1.5 and ~5 min)
+.venv\Scripts\python.exe -m training.validate_soh_nasa      # real vs synthetic training, baselines
+.venv\Scripts\python.exe -m training.compare_soh_features   # why "change since new" features
 
 # Tests (~2 min)
 .venv\Scripts\python.exe -m pytest -q
@@ -134,38 +136,51 @@ See [`DEMO_SCRIPT.md`](DEMO_SCRIPT.md) for the 5-minute review sequence and fall
 
 | Piece | What it does |
 |---|---|
-| `soh_model.py` | MLP on 10 BMS cycle features. Cells split 65/15/20 into train/val/test **by cell**; held-out MAE ≈ 0.7-0.9 %-points SOH on synthetic cells. See "Proof on real batteries" below |
+| `soh_model.py` | MLP on 10 BMS cycle features, **trained on real NASA cells**. Resistance, voltage and temperature are measured as change since the battery was new. 4.8 SOH points MAE on 7 real cells it never saw (see below) |
 | `range_model.py` | MLP predicting Wh/km from weather, HVAC, driving style, speed, load and SOH. A fleet model is fine-tuned on the owner's own trips (`range_model_owner.pt`). Range = usable kWh × SOH × SOC ÷ Wh/km; the brochure figure (312 km × SOC) is exposed alongside |
 | `degradation.py` | SOH projection and remaining useful life (years to 70%) under a charging habit; drives the 2-year resale projection and fleet longevity |
 | `attribution.py` | Exact Shapley values over AC/heater, battery ageing, driving style, temperature and load (32 batched model calls) |
 | `guard.py` | `check(action, ...)`: the single gate every action passes. Returns allow / modify / refuse, a reason and, when relevant, a proposed charging stop |
 | `core.py` | `BatteryCore`, the only entry point. A test fails if any other module imports the SOH, ageing or degradation code directly |
 
-### Proof on real batteries (NASA ageing data)
+### Battery health on real batteries (NASA ageing data)
 
-`data_gen/nasa_battery.py` converts NASA Ames' public Li-ion ageing dataset (34 real 18650 cells,
-Saha & Goebel 2007) into the same 10 BMS features, computed from the measured voltage, current,
-temperature and impedance. SOH is the measured capacity divided by the rated 2 Ah.
-`training/validate_soh_nasa.py` then tests the method on real cells it has never seen.
+The shipped SOH model is trained on **real** batteries: NASA Ames' public Li-ion ageing dataset
+(34 real 18650 cells, Saha & Goebel 2007). `data_gen/nasa_battery.py` turns each cell's measured
+voltage, current, temperature and impedance into the model's 10 BMS features. SOH is the measured
+capacity divided by the rated 2 Ah.
 
-| Held-out real cells | MLP trained on real cells | Cycle count only | Average SOH | App's synthetic model, unchanged |
+- **Split by cell, fixed in advance:** 22 cells train, 5 validate and 7 are held out for testing:
+  B0007, B0027, B0031, B0036, B0043, B0047 and B0055, spanning 4–43 °C and different loads.
+- **Result on the 7 held-out cells:** **4.8 SOH points MAE (6.5% MAPE, R² 0.76).**
+  - Per cell: B0031 0.7, B0043 2.3, B0036 3.7, B0055 4.2, B0007 6.2, B0047 7.1, B0027 12.3.
+  - B0027 is a short 28-cycle run on an unusual square-wave load.
+- **The demo car's battery log is a held-out real cell (B0007),** replayed from new to the cycle where the
+  lab measured 87.5%. The app shows the model's estimate, as a real car would: **77%**. It underestimates
+  this cell by about 10 points; the simulator panel shows both numbers.
+- **The fleet's 40 cars replay held-out cells** at random points in service (lab-measured ≥ 70%). Their
+  estimates are 4.7 points from the lab values on average.
+
+**Why "change since new" features.** New cells of the same type differ a lot: NASA's start between 28
+and 135 mΩ. An absolute reading can make a healthy cell look worn; B0036 was read as 78% when it was
+90%. A battery system tracks drift from its own baseline instead. In a fair comparison
+(`training/compare_soh_features.py`: 3 seeds × 3 held-out protocols), the drift features averaged 5.2
+points against 6.3 for absolute values. Absolute values do slightly better only on the 4 classic cells,
+which were all tested the same way.
+
+**Real-trained vs synthetic-trained** (`training/validate_soh_nasa.py`):
+
+| Held-out real cells | MLP trained on real cells | Cycle count only | Average SOH | Same MLP trained on synthetic cells |
 |---|---|---|---|---|
-| Classic B0005/6/7/18, leave-one-cell-out | **≈2.8 pts MAE (3.7%)** | 4.2 pts | 7.9 pts | 15.2 pts |
-| All 34 cells, 5 folds by cell | **6.6 pts MAE (10.7%)** | 12.4 pts | 12.4 pts | 17.3 pts |
+| Classic B0005/6/7/18, leave-one-cell-out | **≈3.3 pts** | 4.2 pts | 7.9 pts | 18.6 pts |
+| All 34 cells, 5 folds by cell | **≈7.0 pts** | 12.4 pts | 12.4 pts | 25.8 pts |
 
-Figures vary by about ±0.1 points from run to run (training randomness); `results/metrics.md` has the latest.
+Synthetic training does not transfer to real batteries, and fine-tuning a synthetic model on real cells
+did worse than training on real cells alone. So the app ships the real-trained model. The synthetic
+generator is kept for things real data doesn't cover (habit and fleet simulations).
 
-What this shows, and what it doesn't:
-- **The approach works on real batteries.** The 10 BMS signals predict an unseen real cell's health to
-  about 3 points on the benchmark cells, and roughly halve the baselines' error across all 34 cells.
-- **The app's shipped weights do not transfer.** Trained only on synthetic cells, they are off by 15–17
-  points on real cells, and fine-tuning them on real cells did slightly worse than training on real
-  cells alone. A real deployment must train on real data. The app keeps the synthetic weights only because
-  the demo car's battery log is itself synthetic.
-- **Projection is not learned.** Future degradation and remaining life (`degradation.py`) use a
-  semi-empirical formula with hand-chosen constants, not a model fitted to these cells.
-- **Harder cells are harder.** The all-cells figure includes 4 °C cells, whose measured capacity also drops
-  from the cold, not only from ageing.
+**Not learned:** future degradation and remaining life (`degradation.py`) use a semi-empirical formula with
+hand-chosen constants, not a model fitted to these cells.
 
 ### Route and charging-stop planner (`backend/app/routing`)
 
@@ -198,7 +213,7 @@ What this shows, and what it doesn't:
 - **Companion** (`app/companion`): charging coach from the owner's sessions, eco-driving coach from
   telemetry, 30-day cost vs petrol, and resale value with a 2-year projection by charging habit.
 - **Fleet** (`app/fleet`):
-  - a 40-car synthetic rental fleet, each car's SOH estimated by the core from its own BMS log
+  - a 40-car rental fleet whose battery logs replay real held-out NASA cells; each car's SOH is estimated by the core
   - battery-aware allocation (healthy packs take long trips, worn packs short city rentals)
   - a PyTorch demand forecaster (zone × hour × weather)
   - Poisson rebalancing that estimates missed rentals saved
@@ -239,18 +254,20 @@ results/            evaluation output
 |---|---|---|
 | `network.json` | 39,755 nodes | **Real** Karnataka roads, places, 37 OSM car chargers, POIs |
 | `demo_chargers.json` | 56 | Seeded demo chargers, labelled as demo in the UI. Six anchor the intercity destinations (Mysuru, Hassan, …) where OSM lists none |
-| `cell_cycles.csv` | ~30k cycles, 36 cells | NASA/CALCE-shaped ageing data → SOH model |
+| `cell_cycles.csv` | ~30k cycles, 36 synthetic cells | the synthetic comparison model (shows synthetic training does not transfer) |
 | `trips.csv` | 24k segments | fleet Wh/km training data |
-| `vehicle_bms_history.csv` | ~770 cycles | the demo car's BMS log → current SOH |
+| `vehicle_bms_history.csv` | ~37 cycles | the demo car's BMS log: real NASA cell B0007 (held out), replayed from new |
 | `owner_trips.csv`, `charging_history.csv` | 90 days | personal range fine-tune, coaching, cost |
 | `fleet_*.csv` | 40 cars, 180 days × 24 h × 12 zones | fleet SOH, demand model, bookings |
-| `nasa_cycles.csv` (optional) | 2,459 discharge cycles, 34 **real** cells | real-battery validation of the SOH method |
+| `nasa_cycles.csv` | 2,459 discharge cycles, 34 **real** cells | trains and tests the shipped SOH model; the demo car and fleet replay held-out cells |
 
 ## 9. Honest limitations
 
-- All battery, owner, trip and fleet data is synthetic, from simplified physics. The only real battery
-  data is the NASA validation above: the SOH *method* holds up on real cells, but the app's shipped weights
-  are synthetic-trained and do not transfer. The routing and fleet comparisons are simulations.
+- The battery-health model and the battery logs are real (NASA lab cells). Trips, owner history, fleet
+  demand and the range model's training data are synthetic. The routing and fleet comparisons are
+  simulations.
+- NASA's are small 18650 lab cells cycled hard, so they age about 6× faster per cycle than a car pack.
+  The demo car's log is therefore short (about 50 cycles), and a car-pack model would need car-pack data.
 - The degradation projection, remaining life and fleet battery-life result come from a semi-empirical
   ageing formula with hand-chosen constants, not a model fitted to real data.
 - Hardware features (OBD-II/CAN, assisted-driving cameras, pre-cooling) are stubs.

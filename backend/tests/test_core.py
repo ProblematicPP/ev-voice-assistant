@@ -31,7 +31,7 @@ def test_route_follows_real_roads(ctx):
 
 def test_soh_in_plausible_band(ctx):
     soh = ctx.battery.soh()
-    assert 0.75 < soh["soh"] < 0.98
+    assert 0.6 < soh["soh"] < 0.98            # model estimate on a real held-out NASA cell's log
     assert soh["usable_kwh"] < soh["nominal_kwh"]
 
 

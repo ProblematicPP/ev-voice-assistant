@@ -81,7 +81,7 @@ class BatteryCore:
         return self.range_model.range_km(soc, {**self.conditions(state), "soh": soh}, highway_share)
 
     def estimate_soh(self, bms_rows: pd.DataFrame) -> float:
-        """SOH for any pack from its recent BMS cycle log (same model and smoothing as the owner's car)."""
+        """SOH for any pack from its BMS cycle log since new (same model and smoothing as the owner's car)."""
         return self.soh_model.current(bms_rows)
 
     # -- Range ----------------------------------------------------------------

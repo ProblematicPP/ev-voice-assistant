@@ -31,7 +31,7 @@ import torch
 from app.battery_core.ageing import SOH_FEATURES
 from app.battery_core.nn import TabularRegressor
 from app.config import DATA_DIR, MODELS_DIR
-from app.battery_core.soh_model import MODEL_PATH
+from app.battery_core.soh_model import SYNTHETIC_MODEL_PATH, drift_features
 
 CLASSIC = ["B0005", "B0006", "B0007", "B0018"]
 RESULTS = Path(__file__).resolve().parents[2] / "results"
@@ -94,9 +94,14 @@ def evaluate(df: pd.DataFrame, folds: list[list[str]], synthetic: TabularRegress
     return summary, p
 
 
+def load() -> pd.DataFrame:
+    """NASA cycles with the shipped model's drift features (change since each cell was new)."""
+    return drift_features(pd.read_csv(DATA_DIR / "nasa_cycles.csv").sort_values(["cell_id", "cycle"]), by="cell_id")
+
+
 def main():
-    df = pd.read_csv(DATA_DIR / "nasa_cycles.csv")
-    synthetic = TabularRegressor.load(MODEL_PATH)
+    df = load()
+    synthetic = TabularRegressor.load(SYNTHETIC_MODEL_PATH)
 
     classic = df[df.cell_id.isin(CLASSIC)]
     c_sum, c_pred = evaluate(classic, [[c] for c in CLASSIC], synthetic)
